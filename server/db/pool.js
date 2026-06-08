@@ -1,19 +1,17 @@
-const { Pool } = require('pg');
+const path = require('path');
+const fs = require('fs');
+const Database = require('better-sqlite3');
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  console.warn('[db] DATABASE_URL not set. Using default localhost connection.');
-}
+const dbFile = process.env.DATABASE_FILE || path.join(__dirname, '..', '..', 'data', 'physics-exam.db');
+const dir = path.dirname(dbFile);
+if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-const pool = new Pool({
-  connectionString: connectionString || 'postgres://postgres:postgres@localhost:5432/physics_exam',
-  ssl: process.env.PGSSL === 'require' ? { rejectUnauthorized: false } : undefined,
-  max: 20,
-  idleTimeoutMillis: 30000
-});
+const db = new Database(dbFile);
+db.pragma('journal_mode = WAL');     // concurrent reads + 1 writer, far better throughput
+db.pragma('synchronous = NORMAL');
+db.pragma('foreign_keys = ON');
+db.pragma('busy_timeout = 5000');
 
-pool.on('error', (err) => {
-  console.error('[db] Unexpected pool error', err);
-});
+console.log('[db] using sqlite at', dbFile);
 
-module.exports = pool;
+module.exports = db;

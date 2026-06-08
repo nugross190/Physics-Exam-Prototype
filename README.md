@@ -6,32 +6,26 @@ Students log in with NIS + examinee number, work through 6 simulations in fixed 
 ## Tech stack
 
 - Node.js 20 + Express
-- PostgreSQL
+- **SQLite (better-sqlite3, WAL mode)** — single-file DB, no separate database server
 - Vanilla JS frontend (no build step)
 - Cookie-based JWT auth
 
 ## Local development
 
 ```bash
-# 1. Postgres (Docker or local)
-createdb physics_exam
-
-# 2. Configure
+# 1. Configure
 cp .env.example .env
-# edit DATABASE_URL, JWT_SECRET, ADMIN_USERNAME, ADMIN_PASSWORD
+# edit JWT_SECRET, ADMIN_USERNAME, ADMIN_PASSWORD
 
-# 3. Install + migrate + seed
+# 2. Install
 npm install
-npm run migrate
-npm run seed
 
-# 4. Run
+# 3. Run (migrate + seed run automatically on first start)
 npm start
 # open http://localhost:8000
 ```
 
-Seed creates: 6 sims, ~10 questions each, and an admin account from `.env`.
-Add students via the admin panel CSV upload (sample: `scripts/sample-students.csv`).
+The SQLite database file is created on first run at `./data/physics-exam.db` (configurable via `DATABASE_FILE`). Seed inserts: 6 sims, ~10 questions each, and an admin account from `.env`. Students are added via the admin panel CSV upload (sample: `scripts/sample-students.csv`).
 
 ## Sim order (fixed)
 
@@ -52,40 +46,27 @@ server/
   auth.js             JWT cookie helpers
   grading.js          Per-question type grading
   db/
-    schema.sql        DDL
+    schema.sql        SQLite DDL
     migrate.js        Apply schema
     seed.js           Sims + questions + admin
-    pool.js           pg Pool
+    pool.js           better-sqlite3 instance (WAL mode)
   routes/
     auth.js           /api/auth/* (student & admin login)
     quest.js          /api/quest/* (dashboard, sim, responses)
     admin.js          /api/admin/* (students, questions, CSV)
 public/
-  index.html          Landing
-  login.html          Student login
-  dashboard.html      Quest map
-  sim.html            Sim runner (iframe + floating overlay)
-  admin.html          Teacher console
+  index.html, login.html, dashboard.html, sim.html, admin.html
   shared/
-    api.js            fetch wrapper
-    style.css         shared UI
-    overlay.css       quiz overlay styles
-    overlay.js        quiz overlay component
-Newton Laws of Motion/   ┐
-Energy Skate Park/        ├ Existing sim folders, served via /sims/<key>/
-Buoyancy Lab/             │
-Under Pressure/           │
-Fluid flow/               │
-Rotational Motion/        ┘
-Dockerfile
-koyeb.yaml
+    api.js, style.css, overlay.css, overlay.js
+Newton Laws of Motion/, Energy Skate Park/, etc. — sim folders served via /sims/<key>/
+Dockerfile, railway.json
 ```
 
 ## Floating quiz overlay
 
-`public/shared/overlay.js` is the unified quiz UI. The sim itself is loaded in an iframe so the overlay sits above any sim (PhET HTML or custom). The overlay is draggable, can be minimized to a floating action button, shows stage chips, and submits each answer to the server immediately.
+`public/shared/overlay.js` is the unified quiz UI. The sim is loaded in an iframe so the overlay sits above any sim (PhET HTML or custom). The overlay is draggable, can be minimized to a floating action button, shows stage chips, and submits each answer to the server immediately.
 
-## Question types & schema
+## Question types
 
 Each question is `(sim_key, stage, type, order_index, payload)`. The seed file is authoritative; the admin panel can edit anything via JSON.
 
@@ -124,46 +105,116 @@ GET    /api/admin/responses.csv
 GET    /api/admin/summary
 ```
 
-## Deploying to Koyeb
+## Deploying to Railway
 
-1. Provision Postgres (Koyeb Postgres add-on, Neon, or Supabase).
-2. Push this repo to GitHub.
-3. Create secrets:
-   ```
-   koyeb secret create database_url --value 'postgres://...'
-   koyeb secret create jwt_secret    --value "$(openssl rand -hex 32)"
-   koyeb secret create admin_username --value 'guru'
-   koyeb secret create admin_password --value 'pilih-yang-kuat'
-   ```
-4. Deploy:
-   ```
-   koyeb service create -f koyeb.yaml
-   ```
-   First boot auto-migrates and (if `SEED_ON_START=1`) seeds sims, questions, and the admin user.
+Railway has a generous free trial ($5 credit/month) — no separate Postgres needed since we use SQLite on a persistent volume.
+
+### Step 1 — Push the repo to GitHub
+
+Make sure this code is on `main` of your GitHub repo.
+
+### Step 2 — Create a Railway project
+
+1. Go to **railway.app** → sign in with GitHub
+2. **New Project** → **Deploy from GitHub repo** → pick `Physics-Exam-Prototype`
+3. Railway auto-detects the `Dockerfile` and starts building
+
+### Step 3 — Add a persistent volume (for the SQLite file)
+
+1. In the project, click your service → **Settings** → **Volumes** → **+ New Volume**
+2. Mount path: `/data`
+3. Save. Railway attaches a persistent disk (1 GB free tier is plenty — exam data is well under 100 MB).
+
+### Step 4 — Set environment variables
+
+Service → **Variables** tab. Add:
+
+| Key              | Value                              |
+|------------------|------------------------------------|
+| `NODE_ENV`       | `production`                       |
+| `PORT`           | `8000`                             |
+| `DATABASE_FILE`  | `/data/physics-exam.db`            |
+| `JWT_SECRET`     | (any long random string — `openssl rand -hex 32` or just paste 32+ random chars) |
+| `ADMIN_USERNAME` | `admin` (or your choice)           |
+| `ADMIN_PASSWORD` | a strong password                  |
+
+### Step 5 — Generate a public domain
+
+Service → **Settings** → **Networking** → **Generate Domain**. You'll get `your-app.up.railway.app`.
+
+### Step 6 — Redeploy
+
+Railway redeploys automatically when env vars change, or click **Deploy**. Watch the build/deploy logs. On first boot you should see:
+
+```
+[db] using sqlite at /data/physics-exam.db
+[migrate] schema applied
+[seed] inserted 11 questions for newton
+[seed] inserted 9 questions for energy
+...
+[seed] admin user ready: admin
+[server] listening on :8000
+```
+
+### Step 7 — Use it
+
+- Open the Railway domain → landing page
+- `/admin.html` → log in with your `ADMIN_USERNAME` / `ADMIN_PASSWORD`
+- **Siswa** tab → **Unggah** → upload `scripts/sample-students.csv` (or your real list)
+- Hand out NIS + examinee numbers, students log in at `/login.html`
+
+### Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Build fails on `better-sqlite3` | The Dockerfile already includes `python3 make g++` — confirm Railway is using `Dockerfile` (Settings → Build → Builder = Dockerfile) |
+| `SQLITE_CANTOPEN` | Volume not mounted at `/data` or `DATABASE_FILE` doesn't match the mount path |
+| DB resets on each deploy | Volume missing — every deploy gets a fresh container. Add the volume in Step 3. |
+| Admin password not working | Change `ADMIN_PASSWORD` env var → redeploy. Seed runs `ON CONFLICT DO UPDATE` so the hash refreshes. |
+| 502 / app crashed | Check **Deploy Logs** for `[error]` |
 
 ## Capacity for 200–250 concurrent students
 
 Traffic profile during exam:
-- **Static**: each student loads HTML/CSS/JS + ~5 MB PhET assets once per sim. Heavy on first hit, then cached.
+- **Static**: each student loads HTML/CSS/JS + ~5 MB PhET assets once per sim, then cached.
 - **Dynamic**: ~1 POST `/api/quest/response` every 30–60s while answering, plus a `GET /api/quest/sim/...` on entry.
-- Sustained load with 250 students ≈ **5–10 req/s**, peaks during stage transitions **20–30 req/s**.
-- Per-request payload is small (<2 KB) and DB writes are tiny JSONB inserts with one unique-index update.
+- Sustained ≈ **5–10 req/s**, peaks **20–30 req/s** at stage transitions.
 
-| Tier              | Spec               | Verdict for 250 students                                 |
-|-------------------|--------------------|----------------------------------------------------------|
-| Koyeb Free / Eco  | 0.1 vCPU / 512 MB  | ❌ runs out of CPU above ~80 concurrent.                  |
-| **Standard Small**| **0.5 vCPU / 1 GB**| ✅ **recommended** with **min 2 instances** + autoscale.  |
-| Standard Medium   | 1 vCPU / 2 GB      | ✅ single instance works, but no redundancy.              |
-| Standard Large    | 2 vCPU / 4 GB      | Overkill for this workload.                              |
+**SQLite + WAL** handles this load easily — writes are serialized to one writer at a time, but each write is ~1 ms, giving 1000+ writes/sec on cheap hardware. With WAL, readers don't block writers.
 
-**Recommendation:** Standard Small × 2 instances (Singapore region), with autoscale up to 4 on 70% CPU. Postgres on Koyeb Nano (or Neon free tier) is enough — total response data for one exam is well under 100 MB.
+| Railway plan       | RAM / vCPU         | Verdict for 250 students                                |
+|--------------------|--------------------|---------------------------------------------------------|
+| Free trial ($5)    | shared, ~512 MB    | ✅ enough for the exam window (~2 hours of $5 credit usage) |
+| **Hobby ($5/mo)**  | **512 MB / 1 vCPU**| ✅ **recommended** — plenty for 250 students            |
+| Pro ($20/mo)       | 8 GB / 8 vCPU      | overkill                                                |
+
+**Recommendation:** Hobby plan, single instance. SQLite makes horizontal scaling impossible (single writer, single file), but a single Node process is more than enough — Node can serve thousands of req/s and our DB writes are tiny.
 
 Verify before exam day:
 ```bash
-TARGET=https://your-app.koyeb.app CONNECTIONS=250 DURATION=120 npm run loadtest
+TARGET=https://your-app.up.railway.app CONNECTIONS=250 DURATION=120 npm run loadtest
 ```
 
-Look for p99 < 500 ms and 0% non-2xx. If CPU saturates, raise `scaling.max` in `koyeb.yaml` or bump to Medium.
+Look for p99 < 500 ms and 0% non-2xx. If memory pressure shows up, bump Railway resources or trim PhET asset sizes.
+
+### Why not Postgres?
+
+- 200–250 students × ~50 answers = ~12,500 small JSON rows. SQLite handles this trivially.
+- No external DB service to provision, pay for, or fail over.
+- Backups are a single file: download `/data/physics-exam.db` after the exam.
+
+The only trade-off: you can't run multiple replicas writing to the same DB. For an exam window this is fine.
+
+## Backups
+
+After (or during) the exam, download the DB:
+
+```bash
+# Via Railway CLI
+railway run cat /data/physics-exam.db > backup.db
+
+# Or use the admin CSV export — open /admin.html → Jawaban → ⬇ Unduh CSV
+```
 
 ## Admin CSV format
 

@@ -1,17 +1,16 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
-const pool = require('./pool');
+const db = require('./pool');
 
 const SIMS = [
   { sim_key: 'newton',   title: 'Hukum Newton tentang Gerak', order_index: 1, embed_path: '/sims/newton/index.html' },
   { sim_key: 'energy',   title: 'Energy Skate Park',          order_index: 2, embed_path: '/sims/energy/energy-skate-park_en.html' },
-  { sim_key: 'buoyancy', title: 'Laboratorium Gaya Apung',     order_index: 3, embed_path: '/sims/buoyancy/buoyancy_en.html' },
-  { sim_key: 'pressure', title: 'Tekanan dalam Fluida',        order_index: 4, embed_path: '/sims/pressure/under-pressure_en.html' },
-  { sim_key: 'fluid',    title: 'Aliran Fluida',               order_index: 5, embed_path: '/sims/fluid/index.html' },
-  { sim_key: 'rotation', title: 'Gerak Rotasi',                order_index: 6, embed_path: '/sims/rotation/index.html' }
+  { sim_key: 'buoyancy', title: 'Laboratorium Gaya Apung',    order_index: 3, embed_path: '/sims/buoyancy/buoyancy_en.html' },
+  { sim_key: 'pressure', title: 'Tekanan dalam Fluida',       order_index: 4, embed_path: '/sims/pressure/under-pressure_en.html' },
+  { sim_key: 'fluid',    title: 'Aliran Fluida',              order_index: 5, embed_path: '/sims/fluid/index.html' },
+  { sim_key: 'rotation', title: 'Gerak Rotasi',               order_index: 6, embed_path: '/sims/rotation/index.html' }
 ];
 
-// Question payload helpers
 const tut  = (title, body) => ({ type: 'tutorial_step', stage: 'tutorial',    payload: { title, body } });
 const varT = (prompt, hint) => ({ type: 'var_test',     stage: 'var_test',    payload: { prompt, hint } });
 const smc  = (question, options, answer) => ({ type: 'simple_mc',  stage: 'inquiry',    payload: { question, options, answer } });
@@ -19,7 +18,6 @@ const cmc  = (question, options, answers) => ({ type: 'complex_mc', stage: 'inqu
 const tf   = (statement, answer) => ({ type: 'true_false', stage: 'true_false', payload: { statement, answer } });
 const wb   = (template, bank, blanks) => ({ type: 'word_bank', stage: 'conclusion', payload: { template, bank, blanks } });
 
-// Seed data per sim. Bahasa Indonesia.
 const QUESTIONS = {
   newton: [
     tut('Selamat datang', 'Pada simulasi ini kamu akan mempelajari Hukum Newton I, II, dan III. Geser slider gaya untuk melihat efeknya.'),
@@ -104,56 +102,34 @@ const QUESTIONS = {
   ]
 };
 
-async function run() {
-  await pool.query('BEGIN');
-  try {
-    for (const s of SIMS) {
-      await pool.query(
-        `INSERT INTO sims (sim_key, title, order_index, embed_path)
-         VALUES ($1,$2,$3,$4)
-         ON CONFLICT (sim_key) DO UPDATE SET title=EXCLUDED.title, order_index=EXCLUDED.order_index, embed_path=EXCLUDED.embed_path`,
-        [s.sim_key, s.title, s.order_index, s.embed_path]
-      );
+const upsertSim = db.prepare(`
+  INSERT INTO sims (sim_key, title, order_index, embed_path) VALUES (?, ?, ?, ?)
+  ON CONFLICT(sim_key) DO UPDATE SET title=excluded.title, order_index=excluded.order_index, embed_path=excluded.embed_path
+`);
+const hasQuestions = db.prepare(`SELECT 1 FROM questions WHERE sim_key = ? LIMIT 1`);
+const insertQuestion = db.prepare(`INSERT INTO questions (sim_key, stage, type, order_index, payload) VALUES (?, ?, ?, ?, ?)`);
+const upsertAdmin = db.prepare(`
+  INSERT INTO admins (username, password_hash) VALUES (?, ?)
+  ON CONFLICT(username) DO UPDATE SET password_hash=excluded.password_hash
+`);
+
+const txn = db.transaction(() => {
+  for (const s of SIMS) upsertSim.run(s.sim_key, s.title, s.order_index, s.embed_path);
+
+  for (const [simKey, qs] of Object.entries(QUESTIONS)) {
+    if (hasQuestions.get(simKey)) {
+      console.log(`[seed] questions for ${simKey} already exist, skipping`);
+      continue;
     }
-
-    for (const [simKey, qs] of Object.entries(QUESTIONS)) {
-      const { rowCount } = await pool.query(`SELECT 1 FROM questions WHERE sim_key=$1 LIMIT 1`, [simKey]);
-      if (rowCount > 0) {
-        console.log(`[seed] questions for ${simKey} already exist, skipping`);
-        continue;
-      }
-      let i = 0;
-      for (const q of qs) {
-        await pool.query(
-          `INSERT INTO questions (sim_key, stage, type, order_index, payload)
-           VALUES ($1,$2,$3,$4,$5::jsonb)`,
-          [simKey, q.stage, q.type, i++, JSON.stringify(q.payload)]
-        );
-      }
-      console.log(`[seed] inserted ${qs.length} questions for ${simKey}`);
-    }
-
-    // Default admin
-    const adminUser = process.env.ADMIN_USERNAME || 'admin';
-    const adminPass = process.env.ADMIN_PASSWORD || 'changeme';
-    const hash = bcrypt.hashSync(adminPass, 10);
-    await pool.query(
-      `INSERT INTO admins (username, password_hash)
-       VALUES ($1,$2)
-       ON CONFLICT (username) DO UPDATE SET password_hash=EXCLUDED.password_hash`,
-      [adminUser, hash]
-    );
-    console.log(`[seed] admin user ready: ${adminUser}`);
-
-    await pool.query('COMMIT');
-  } catch (err) {
-    await pool.query('ROLLBACK');
-    throw err;
+    let i = 0;
+    for (const q of qs) insertQuestion.run(simKey, q.stage, q.type, i++, JSON.stringify(q.payload));
+    console.log(`[seed] inserted ${qs.length} questions for ${simKey}`);
   }
-  await pool.end();
-}
 
-run().catch((err) => {
-  console.error('[seed] failed:', err);
-  process.exit(1);
+  const adminUser = process.env.ADMIN_USERNAME || 'admin';
+  const adminPass = process.env.ADMIN_PASSWORD || 'changeme';
+  upsertAdmin.run(adminUser, bcrypt.hashSync(adminPass, 10));
+  console.log(`[seed] admin user ready: ${adminUser}`);
 });
+
+txn();

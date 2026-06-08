@@ -1,73 +1,65 @@
--- Physics Exam Platform schema
+-- Physics Exam Platform schema (SQLite)
 
 CREATE TABLE IF NOT EXISTS students (
-  id            SERIAL PRIMARY KEY,
-  nis           VARCHAR(64)  NOT NULL UNIQUE,
-  examinee_no   VARCHAR(64)  NOT NULL,
-  name          VARCHAR(255) NOT NULL,
-  class_name    VARCHAR(64),
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  nis          TEXT NOT NULL UNIQUE,
+  examinee_no  TEXT NOT NULL,
+  name         TEXT NOT NULL,
+  class_name   TEXT,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
-
 CREATE INDEX IF NOT EXISTS idx_students_examinee ON students(examinee_no);
 
 CREATE TABLE IF NOT EXISTS sessions (
-  id            SERIAL PRIMARY KEY,
-  student_id    INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  started_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  last_seen_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  completed_sims TEXT[] NOT NULL DEFAULT '{}',
-  current_sim   VARCHAR(64),
-  current_stage VARCHAR(32)
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  student_id      INTEGER NOT NULL UNIQUE REFERENCES students(id) ON DELETE CASCADE,
+  started_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  last_seen_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  completed_sims  TEXT NOT NULL DEFAULT '[]',   -- JSON array of sim_keys
+  current_sim     TEXT,
+  current_stage   TEXT
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_student ON sessions(student_id);
-
--- Sims catalog (fixed order). sim_key matches static folder name slug.
 CREATE TABLE IF NOT EXISTS sims (
-  sim_key       VARCHAR(64) PRIMARY KEY,
-  title         VARCHAR(255) NOT NULL,
-  order_index   INTEGER NOT NULL,
-  embed_path    VARCHAR(255) NOT NULL
+  sim_key      TEXT PRIMARY KEY,
+  title        TEXT NOT NULL,
+  order_index  INTEGER NOT NULL,
+  embed_path   TEXT NOT NULL
 );
 
--- Questions per sim per stage.
 -- stage ∈ ('tutorial','var_test','inquiry','true_false','conclusion')
 -- type  ∈ ('tutorial_step','var_test','simple_mc','complex_mc','true_false','word_bank')
 CREATE TABLE IF NOT EXISTS questions (
-  id            SERIAL PRIMARY KEY,
-  sim_key       VARCHAR(64) NOT NULL REFERENCES sims(sim_key) ON DELETE CASCADE,
-  stage         VARCHAR(32) NOT NULL,
-  type          VARCHAR(32) NOT NULL,
-  order_index   INTEGER NOT NULL DEFAULT 0,
-  payload       JSONB NOT NULL,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  sim_key      TEXT NOT NULL REFERENCES sims(sim_key) ON DELETE CASCADE,
+  stage        TEXT NOT NULL,
+  type         TEXT NOT NULL,
+  order_index  INTEGER NOT NULL DEFAULT 0,
+  payload      TEXT NOT NULL,                  -- JSON
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
-
 CREATE INDEX IF NOT EXISTS idx_questions_sim_stage ON questions(sim_key, stage, order_index);
 
--- Student answers
 CREATE TABLE IF NOT EXISTS responses (
-  id            SERIAL PRIMARY KEY,
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
   session_id    INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
   student_id    INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   question_id   INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
-  sim_key       VARCHAR(64) NOT NULL,
-  stage         VARCHAR(32) NOT NULL,
-  answer        JSONB NOT NULL,
-  is_correct    BOOLEAN,
+  sim_key       TEXT NOT NULL,
+  stage         TEXT NOT NULL,
+  answer        TEXT NOT NULL,                 -- JSON
+  is_correct    INTEGER,                       -- 1, 0, or NULL
   time_spent_ms INTEGER,
-  submitted_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  submitted_at  TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE (session_id, question_id)
 );
-
 CREATE INDEX IF NOT EXISTS idx_responses_student ON responses(student_id);
 CREATE INDEX IF NOT EXISTS idx_responses_sim ON responses(sim_key, stage);
 
 CREATE TABLE IF NOT EXISTS admins (
-  id            SERIAL PRIMARY KEY,
-  username      VARCHAR(64) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  username      TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );

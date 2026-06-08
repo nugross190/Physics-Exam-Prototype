@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Siswa — Ujian Fisika</title>
+  <link rel="stylesheet" href="/shared/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">Ujian Fisika</div>
+    <div class="row">
+      <div class="user" id="user"></div>
+      <button class="btn btn-secondary" id="logout">Keluar</button>
+    </div>
+  </div>
+  <div class="container">
+    <h1>Daftar Simulasi</h1>
+    <p class="muted">Selesaikan setiap simulasi secara berurutan. Setelah satu simulasi selesai, simulasi berikutnya akan terbuka.</p>
+    <div id="banner" class="banner ok" style="display:none;"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+  <script src="/shared/api.js"></script>
+  <script>
+    async function load() {
+      let data;
+      try { data = await API.get('/api/quest/dashboard'); }
+      catch { window.location.href = '/login.html'; return; }
+      document.getElementById('user').textContent = `${data.student.name} • NIS ${data.student.nis}`;
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+      for (const s of data.sims) {
+        const card = document.createElement('div');
+        card.className = 'sim-card' + (s.completed ? ' completed' : '') + (s.unlocked ? '' : ' locked');
+        card.innerHTML = `
+          <div class="order">Simulasi #${s.order_index}</div>
+          <div class="title">${s.title}</div>
+          <div class="status">${s.completed ? '✓ Selesai' : (s.unlocked ? '▶ Tersedia' : '🔒 Terkunci')}</div>
+        `;
+        if (s.unlocked) {
+          card.addEventListener('click', () => {
+            window.location.href = `/sim.html?key=${encodeURIComponent(s.sim_key)}`;
+          });
+        }
+        grid.appendChild(card);
+      }
+      if (!data.active_sim) {
+        const b = document.getElementById('banner');
+        b.textContent = 'Selamat! Semua simulasi telah selesai.';
+        b.style.display = 'block';
+      }
+    }
+    document.getElementById('logout').addEventListener('click', async () => {
+      await API.post('/api/auth/logout');
+      window.location.href = '/';
+    });
+    load();
+  </script>
+</body>
+</html>

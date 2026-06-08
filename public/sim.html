@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulasi — Ujian Fisika</title>
+  <link rel="stylesheet" href="/shared/overlay.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+</head>
+<body style="margin:0; padding:0; background:#000;">
+  <div class="sim-topbar">
+    <div class="left">
+      <a href="/dashboard.html">← Dashboard</a>
+      <strong id="sim-title">Memuat...</strong>
+    </div>
+    <div>
+      <button id="toggle-quiz">📝 Buka Quiz</button>
+    </div>
+  </div>
+  <iframe id="sim-host" src="about:blank" allow="fullscreen" allowfullscreen></iframe>
+
+  <script src="/shared/api.js"></script>
+  <script src="/shared/overlay.js"></script>
+  <script>
+    (async function () {
+      const params = new URLSearchParams(window.location.search);
+      const key = params.get('key');
+      if (!key) { window.location.href = '/dashboard.html'; return; }
+      let meta;
+      try {
+        meta = await API.get(`/api/quest/sim/${encodeURIComponent(key)}`);
+      } catch (err) {
+        alert(err.message);
+        window.location.href = '/dashboard.html';
+        return;
+      }
+      document.getElementById('sim-title').textContent = meta.sim.title;
+      document.getElementById('sim-host').src = meta.sim.embed_path;
+      await QuizOverlay.init(key);
+      document.getElementById('toggle-quiz').addEventListener('click', () => {
+        const panel = document.getElementById('quiz-panel');
+        const fab = document.getElementById('quiz-fab');
+        const open = panel.classList.contains('hidden');
+        panel.classList.toggle('hidden', !open);
+        fab.style.display = open ? 'none' : 'block';
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Simulasi Fisika: Dinamika Rotasi & Kekekalan Momentum Sudut</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+
+  <!-- Phase Indicator Badge -->
+  <div class="phase-container">
+    <div id="phase-badge" class="phase-badge phase-1">Fase 1: Torsi</div>
+    <div id="action-prompt" class="action-prompt hidden">Tarik bilah ke dalam &rarr;</div>
+  </div>
+
+  <!-- HUD Data -->
+  <div class="hud">
+    <div class="hud-header">Data Simulasi</div>
+    <div class="hud-item" id="hud-time"><span>Waktu:</span> <strong id="val-time">0.0</strong> <span class="unit">s</span></div>
+    <div class="hud-item" id="hud-height"><span>Tinggi Massa:</span> <strong id="val-height">3.0</strong> <span class="unit">m</span></div>
+    <div class="hud-item" id="hud-torque"><span>Torsi (&tau;):</span> <strong id="val-torque">0.0</strong> <span class="unit">Nm</span></div>
+    <div class="hud-item" id="hud-inertia"><span>Momen Inersia (I):</span> <strong id="val-inertia">0.0</strong> <span class="unit">kg&middot;m&sup2;</span></div>
+    <div class="hud-item" id="hud-alpha"><span>Percepatan Sudut (&alpha;):</span> <strong id="val-alpha">0.0</strong> <span class="unit">rad/s&sup2;</span></div>
+    <div class="hud-item" id="hud-omega"><span>Kecepatan Sudut (&omega;):</span> <strong id="val-omega">0.0</strong> <span class="unit">rad/s</span></div>
+    <div class="hud-item" id="hud-theta"><span>Sudut (&theta;):</span> <strong id="val-theta">0.0</strong> <span class="unit">rad</span></div>
+    <div class="hud-item" id="hud-momentum"><span>Momentum Sudut (L):</span> <strong id="val-momentum">0.0</strong> <span class="unit">kg&middot;m&sup2;/s</span></div>
+  </div>
+
+  <!-- Stable Momentum Toast Cue (Phase 2) -->
+  <div id="toast-cue" class="toast-cue hidden">Momentum Stabil</div>
+
+  <canvas id="simCanvas"></canvas>
+
+  <!-- Settings Panel - Always Visible Top Bar -->
+  <div id="settingsPanel" class="settings-panel-top">
+    <div class="setting-group">
+      <h4>Massa Jatuh</h4>
+      <div class="slider-row">
+        <label for="mass">Massa (m)</label>
+        <input type="range" id="mass" min="1" max="20" value="10" step="0.5">
+        <span class="val-display" id="val-mass">10</span>
+        <span class="unit-label">kg</span>
+      </div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <div class="setting-group">
+      <h4>Gandar (Axle)</h4>
+      <div class="slider-row">
+        <label for="radius">Radius (r)</label>
+        <input type="range" id="radius" min="0.05" max="0.5" value="0.1" step="0.01">
+        <span class="val-display" id="val-radius">0.10</span>
+        <span class="unit-label">m</span>
+      </div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <div class="setting-group">
+      <h4>Bilah Propeller</h4>
+      <div class="slider-row">
+        <label for="blade-mass">Massa (mb)</label>
+        <input type="range" id="blade-mass" min="0.5" max="5.0" value="2.0" step="0.1">
+        <span class="val-display" id="val-blade-mass">2.0</span>
+        <span class="unit-label">kg</span>
+      </div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <div class="setting-group">
+      <h4>Panjang Bilah</h4>
+      <div class="slider-row">
+        <label for="blade-length">Panjang (L)</label>
+        <input type="range" id="blade-length" min="0.2" max="2.0" value="1.0" step="0.05">
+        <span class="val-display" id="val-blade-length">1.00</span>
+        <span class="unit-label">m</span>
+      </div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <button id="resetSimBtn" class="reset-btn"><i class="ph ph-arrow-counter-clockwise"></i> Reset</button>
+  </div>
+
+  <!-- Bottom Playback Bar -->
+  <div class="playback-bar">
+    <button id="playPauseBtn" class="icon-btn main-play-btn"><i class="ph ph-play"></i></button>
+    <div class="timeline-container">
+      <input type="range" id="timeline" min="0" max="0" value="0" step="1">
+    </div>
+  </div>
+
+  <!-- Quiz Toggle FAB -->
+  <button id="quizToggleBtn" class="fab quiz-fab" title="Buka Kuis Interaktif">
+    <i class="ph ph-exam"></i>
+  </button>
+
+  <!-- Quiz Modal Overlay -->
+  <div id="quizOverlay" class="quiz-overlay hidden">
+    <div class="quiz-modal">
+      <div class="quiz-header">
+        <h2>📝 Kuis Dinamika Rotasi</h2>
+        <button id="quizCloseBtn" class="icon-btn"><i class="ph ph-x"></i></button>
+      </div>
+
+      <!-- Quiz Tabs -->
+      <div class="quiz-tabs">
+        <button class="quiz-tab active" data-tab="simple-mc">Pilihan Ganda</button>
+        <button class="quiz-tab" data-tab="complex-mc">PG Kompleks</button>
+        <button class="quiz-tab" data-tab="true-false">Benar / Salah</button>
+        <button class="quiz-tab" data-tab="word-bank">Isian Kata</button>
+      </div>
+
+      <!-- Quiz Content Area -->
+      <div class="quiz-body">
+        <div id="quiz-simple-mc" class="quiz-content active"></div>
+        <div id="quiz-complex-mc" class="quiz-content"></div>
+        <div id="quiz-true-false" class="quiz-content"></div>
+        <div id="quiz-word-bank" class="quiz-content"></div>
+      </div>
+
+      <!-- Quiz Footer -->
+      <div class="quiz-footer">
+        <div class="quiz-score">Skor: <strong id="quizScoreDisplay">0 / 0</strong></div>
+        <button id="quizCheckBtn" class="quiz-check-btn"><i class="ph ph-check-circle"></i> Periksa Jawaban</button>
+        <button id="quizResetBtn" class="quiz-reset-btn"><i class="ph ph-arrow-counter-clockwise"></i> Ulangi</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+  <script src="quiz.js"></script>
+</body>
+</html>

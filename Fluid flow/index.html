@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluid Dynamics Simulator - Bernoulli & Continuity</title>
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header Section -->
+        <header class="app-header">
+            <div class="logo-area">
+                <div class="pulse-dot"></div>
+                <span class="logo-text">AERO-FLOW v1.0</span>
+            </div>
+            <h1>Fluid Dynamics Simulator</h1>
+            <p class="subtitle">Real-time simulation of inviscid flow illustrating Continuity & Bernoulli's Principle</p>
+        </header>
+
+        <!-- Main Dashboard Layout -->
+        <main class="dashboard-grid">
+            <!-- Canvas Container -->
+            <section class="canvas-container" aria-label="Fluid simulation canvas">
+                <div class="canvas-header">
+                    <span class="status-indicator">
+                        <span class="status-pulse"></span>
+                        SIMULATION ACTIVE
+                    </span>
+                    <span class="canvas-title">Venturi Tube Flow Profile</span>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="simCanvas" width="900" height="400"></canvas>
+                </div>
+            </section>
+
+            <!-- Readout Section -->
+            <section class="readout-container" aria-label="Measurement Probe Readout">
+                <div class="readout-header">
+                    <h2>Probe Measurements</h2>
+                    <span id="probe-status" class="probe-inactive">Awaiting Probe Input...</span>
+                </div>
+                <div class="readout-grid">
+                    <!-- Segment Card -->
+                    <div class="readout-card" id="card-segment">
+                        <div class="card-icon">⚡</div>
+                        <div class="card-body">
+                            <h3>Segment</h3>
+                            <div class="card-value" id="val-segment">--</div>
+                            <p class="card-label">CURRENT POSITION</p>
+                        </div>
+                    </div>
+                    <!-- Diameter Card -->
+                    <div class="readout-card" id="card-diameter">
+                        <div class="card-icon">⌀</div>
+                        <div class="card-body">
+                            <h3>Diameter</h3>
+                            <div class="card-value" id="val-diameter">--</div>
+                            <p class="card-label">PIPE APERTURE</p>
+                        </div>
+                    </div>
+                    <!-- Velocity Card -->
+                    <div class="readout-card" id="card-velocity">
+                        <div class="card-icon">↗</div>
+                        <div class="card-body">
+                            <h3>Velocity</h3>
+                            <div class="card-value" id="val-velocity">--</div>
+                            <p class="card-label">FLUID FLOW VELOCITY</p>
+                        </div>
+                    </div>
+                    <!-- Pressure Card -->
+                    <div class="readout-card" id="card-pressure">
+                        <div class="card-icon">⤓</div>
+                        <div class="card-body">
+                            <h3>Pressure</h3>
+                            <div class="card-value" id="val-pressure">--</div>
+                            <p class="card-label">HYDROSTATIC PRESSURE</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Science Theory & Presets Section -->
+            <section class="info-section">
+                <!-- Preset References -->
+                <div class="info-card preset-card">
+                    <h3>Simulation Constants & Presets</h3>
+                    <div class="preset-grid">
+                        <div class="preset-item">
+                            <span class="p-label">Fluid Density (ρ)</span>
+                            <span class="p-val">1,000 kg/m³ <small>(Water)</small></span>
+                        </div>
+                        <div class="preset-item">
+                            <span class="p-label">Inlet Velocity (v₁)</span>
+                            <span class="p-val">1.0 m/s</span>
+                        </div>
+                        <div class="preset-item">
+                            <span class="p-label">Inlet Pressure (P₁)</span>
+                            <span class="p-val">200 kPa</span>
+                        </div>
+                        <div class="preset-item">
+                            <span class="p-label">Elevation (h)</span>
+                            <span class="p-val">Constant (0m)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Equation: Continuity -->
+                <div class="info-card math-card">
+                    <h3>Continuity Equation</h3>
+                    <p class="formula">A₁v₁ = A₂v₂ = constant</p>
+                    <p class="math-desc">Since mass is conserved, fluid must speed up in narrower segments to maintain a constant volumetric flow rate.</p>
+                </div>
+
+                <!-- Equation: Bernoulli -->
+                <div class="info-card math-card">
+                    <h3>Bernoulli's Principle</h3>
+                    <p class="formula">P + ½ρv² = constant</p>
+                    <p class="math-desc">As the velocity of a fluid increases, the static pressure decreases, keeping the total mechanical energy constant along a streamline.</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Fluid Dynamics Simulator © 2026. Made with Precision Physics Engine.</p>
+        </footer>
+    </div>
+
+    <!-- Simulation Script -->
+    <script src="main.js"></script>
+</body>
+</html>

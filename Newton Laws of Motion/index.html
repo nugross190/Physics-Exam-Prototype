@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Simulasi Fisika: Gerak Partikel</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+
+<body>
+  <!-- HUD Data -->
+  <div class="hud">
+    <div class="hud-item"><span>Waktu:</span> <strong id="val-time">0.0</strong> <span class="unit">s</span></div>
+    <div class="hud-item"><span>Posisi (x,y):</span> <strong id="val-pos">0.0, 0.0</strong> <span class="unit">m</span>
+    </div>
+    <div class="hud-item"><span>Kecepatan:</span> <strong id="val-vel">0.0</strong> <span class="unit">m/s</span></div>
+    <div class="hud-item"><span>Percepatan:</span> <strong id="val-acc">0.0</strong> <span class="unit">m/s²</span>
+    </div>
+  </div>
+
+  <canvas id="simCanvas"></canvas>
+
+  <!-- Settings Panel - Always Visible Top Bar -->
+  <div id="settingsPanel" class="settings-panel-top">
+    <div class="setting-group">
+      <h4>Objek</h4>
+      <div class="slider-row">
+        <label>Massa</label>
+        <input type="range" id="mass" min="1" max="100" value="10" step="1">
+        <span class="val-display" id="val-mass">10</span>
+        <span class="unit-label">kg</span>
+      </div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <div class="setting-group force-group">
+      <h4>Gaya</h4>
+      <div class="force-grid">
+        <div class="slider-row">
+          <label>Atas</label>
+          <input type="range" id="f-up" min="0" max="100" value="0" step="1">
+          <span class="val-display" id="val-f-up">0</span>
+          <span class="unit-label">N</span>
+        </div>
+        <div class="slider-row">
+          <label>Bawah</label>
+          <input type="range" id="f-down" min="0" max="100" value="0" step="1">
+          <span class="val-display" id="val-f-down">0</span>
+          <span class="unit-label">N</span>
+        </div>
+        <div class="slider-row">
+          <label>Kiri</label>
+          <input type="range" id="f-left" min="0" max="100" value="0" step="1">
+          <span class="val-display" id="val-f-left">0</span>
+          <span class="unit-label">N</span>
+        </div>
+        <div class="slider-row">
+          <label>Kanan</label>
+          <input type="range" id="f-right" min="0" max="100" value="0" step="1">
+          <span class="val-display" id="val-f-right">0</span>
+          <span class="unit-label">N</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <div class="setting-group">
+      <h4>Tampilan</h4>
+      <div class="slider-row">
+        <label>Grid</label>
+        <input type="range" id="grid-size" min="1" max="50" value="4" step="1">
+        <span class="val-display" id="val-grid">4</span>
+        <span class="unit-label">m</span>
+      </div>
+      <div class="toggle-row">
+        <label for="show-path">Lintasan</label>
+        <label class="switch">
+          <input type="checkbox" id="show-path" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <button id="resetSimBtn" class="reset-btn"><i class="ph ph-arrow-counter-clockwise"></i> Reset</button>
+  </div>
+
+  <!-- Bottom Playback Bar -->
+  <div class="playback-bar">
+    <button id="playPauseBtn" class="icon-btn main-play-btn"><i class="ph ph-pause"></i></button>
+    <div class="timeline-container">
+      <input type="range" id="timeline" min="0" max="100" value="100" step="1">
+    </div>
+  </div>
+
+  <!-- Quiz Toggle FAB -->
+  <button id="quizToggleBtn" class="fab quiz-fab">
+    <i class="ph ph-exam"></i>
+  </button>
+
+  <!-- Quiz Modal Overlay -->
+  <div id="quizOverlay" class="quiz-overlay hidden">
+    <div class="quiz-modal">
+      <div class="quiz-header">
+        <h2>📝 Kuis Interaktif</h2>
+        <button id="quizCloseBtn" class="icon-btn"><i class="ph ph-x"></i></button>
+      </div>
+
+      <!-- Quiz Tabs -->
+      <div class="quiz-tabs">
+        <button class="quiz-tab active" data-tab="simple-mc">Pilihan Ganda</button>
+        <button class="quiz-tab" data-tab="complex-mc">PG Kompleks</button>
+        <button class="quiz-tab" data-tab="true-false">Benar / Salah</button>
+        <button class="quiz-tab" data-tab="word-bank">Isian Kata</button>
+      </div>
+
+      <!-- Quiz Content Area -->
+      <div class="quiz-body">
+        <div id="quiz-simple-mc" class="quiz-content active"></div>
+        <div id="quiz-complex-mc" class="quiz-content"></div>
+        <div id="quiz-true-false" class="quiz-content"></div>
+        <div id="quiz-word-bank" class="quiz-content"></div>
+      </div>
+
+      <!-- Quiz Footer -->
+      <div class="quiz-footer">
+        <div class="quiz-score">Skor: <strong id="quizScoreDisplay">0 / 0</strong></div>
+        <button id="quizCheckBtn" class="quiz-check-btn"><i class="ph ph-check-circle"></i> Periksa Jawaban</button>
+        <button id="quizResetBtn" class="quiz-reset-btn"><i class="ph ph-arrow-counter-clockwise"></i> Ulangi</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+  <script src="quiz.js"></script>
+</body>
+
+</html>

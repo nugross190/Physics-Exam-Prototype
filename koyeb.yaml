@@ -1,0 +1,47 @@
+# Koyeb deployment manifest.
+# Apply via: koyeb app init physics-exam --git github.com/<owner>/<repo> --git-branch main --ports 8000:http
+# Or import this file via `koyeb service create -f koyeb.yaml`.
+name: physics-exam
+type: web
+
+build:
+  dockerfile: Dockerfile
+
+services:
+  - name: web
+    instance_type: small   # 0.5 vCPU / 1 GB RAM. See README for capacity rationale.
+    regions:
+      - sin                # Singapore — closest to Indonesian students.
+    scaling:
+      min: 2
+      max: 4
+      targets:
+        - average_cpu:
+            value: 70
+    ports:
+      - port: 8000
+        protocol: http
+    routes:
+      - path: /
+        port: 8000
+    health_checks:
+      - http:
+          path: /healthz
+          port: 8000
+    env:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "8000"
+      - key: DATABASE_URL
+        secret: database_url     # set via `koyeb secret create database_url --value '...'`
+      - key: JWT_SECRET
+        secret: jwt_secret
+      - key: ADMIN_USERNAME
+        secret: admin_username
+      - key: ADMIN_PASSWORD
+        secret: admin_password
+      - key: PGSSL
+        value: require
+      - key: SEED_ON_START
+        value: "1"

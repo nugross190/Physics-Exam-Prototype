@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Ujian Fisika</title>
+  <link rel="stylesheet" href="/shared/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+    .tabs button { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-weight: 600; }
+    .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .col-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    pre { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; }
+    .q-row { padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: #fff; }
+    .q-row.editing { border-color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">Admin Ujian Fisika</div>
+    <div class="row" id="nav-right"></div>
+  </div>
+
+  <div class="container" id="login-view">
+    <div class="card" style="max-width: 420px; margin: 60px auto;">
+      <h1>Login Guru</h1>
+      <div id="login-err" class="banner err" style="display:none;"></div>
+      <div class="field"><label>Username</label><input class="input" id="adm-user" /></div>
+      <div class="field"><label>Password</label><input class="input" type="password" id="adm-pass" /></div>
+      <button class="btn" id="adm-login" style="width:100%;">Masuk</button>
+    </div>
+  </div>
+
+  <div class="container" id="app-view" style="display:none;">
+    <div class="tabs">
+      <button data-tab="students" class="active">Siswa</button>
+      <button data-tab="questions">Soal</button>
+      <button data-tab="responses">Jawaban</button>
+      <button data-tab="summary">Ringkasan</button>
+    </div>
+
+    <div id="tab-students" class="tab-panel">
+      <div class="card">
+        <h2>Unggah Daftar Siswa (CSV)</h2>
+        <p class="muted">Format kolom: <code>nis, examinee_no, name, class_name</code></p>
+        <div class="row">
+          <input type="file" id="csv-file" accept=".csv" />
+          <button class="btn" id="csv-upload">Unggah</button>
+        </div>
+        <div id="csv-msg" style="margin-top:10px;"></div>
+        <h2 style="margin-top:20px;">Daftar Siswa</h2>
+        <div id="students-table"></div>
+      </div>
+    </div>
+
+    <div id="tab-questions" class="tab-panel" style="display:none;">
+      <div class="card">
+        <h2>Editor Soal</h2>
+        <div class="row" style="margin-bottom: 12px;">
+          <label>Simulasi:</label>
+          <select id="q-sim"></select>
+          <button class="btn btn-secondary" id="q-new">+ Soal Baru</button>
+        </div>
+        <div id="q-list"></div>
+      </div>
+    </div>
+
+    <div id="tab-responses" class="tab-panel" style="display:none;">
+      <div class="card">
+        <h2>Jawaban Siswa</h2>
+        <div class="row" style="margin-bottom:10px;">
+          <a class="btn" href="/api/admin/responses.csv">⬇ Unduh CSV</a>
+        </div>
+        <div id="resp-table"></div>
+      </div>
+    </div>
+
+    <div id="tab-summary" class="tab-panel" style="display:none;">
+      <div class="card">
+        <h2>Ringkasan Progress</h2>
+        <div id="summary-table"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/shared/api.js"></script>
+  <script>
+    let sims = [];
+
+    async function checkAuth() {
+      const me = await API.get('/api/auth/me');
+      if (me.authenticated && me.role === 'admin') showApp();
+      else showLogin();
+    }
+    function showLogin() {
+      document.getElementById('login-view').style.display = '';
+      document.getElementById('app-view').style.display = 'none';
+      document.getElementById('nav-right').innerHTML = '';
+    }
+    function showApp() {
+      document.getElementById('login-view').style.display = 'none';
+      document.getElementById('app-view').style.display = '';
+      document.getElementById('nav-right').innerHTML = '<button class="btn btn-secondary" id="logout">Keluar</button>';
+      document.getElementById('logout').addEventListener('click', async () => {
+        await API.post('/api/auth/logout'); showLogin();
+      });
+      loadAll();
+    }
+
+    document.getElementById('adm-login').addEventListener('click', async () => {
+      const err = document.getElementById('login-err');
+      err.style.display = 'none';
+      try {
+        await API.post('/api/auth/admin/login', {
+          username: document.getElementById('adm-user').value,
+          password: document.getElementById('adm-pass').value
+        });
+        showApp();
+      } catch (ex) { err.textContent = ex.message; err.style.display = 'block'; }
+    });
+
+    document.querySelectorAll('.tabs button').forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+        document.getElementById('tab-' + b.dataset.tab).style.display = '';
+      });
+    });
+
+    async function loadAll() {
+      const s = await API.get('/api/admin/sims'); sims = s.sims;
+      const sel = document.getElementById('q-sim');
+      sel.innerHTML = sims.map(x => `<option value="${x.sim_key}">${x.title}</option>`).join('');
+      sel.addEventListener('change', loadQuestions);
+      document.getElementById('q-new').addEventListener('click', newQuestion);
+      await Promise.all([loadStudents(), loadQuestions(), loadResponses(), loadSummary()]);
+    }
+
+    async function loadStudents() {
+      const { students } = await API.get('/api/admin/students');
+      const html = `
+        <table><thead><tr><th>NIS</th><th>No Peserta</th><th>Nama</th><th>Kelas</th><th></th></tr></thead><tbody>
+        ${students.map(s => `<tr><td>${s.nis}</td><td>${s.examinee_no}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.class_name||'')}</td><td><button class="btn btn-bad" data-id="${s.id}">Hapus</button></td></tr>`).join('')}
+        </tbody></table>
+      `;
+      document.getElementById('students-table').innerHTML = html;
+      document.querySelectorAll('#students-table button[data-id]').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm('Hapus siswa ini?')) return;
+        await API.del('/api/admin/students/' + b.dataset.id);
+        loadStudents();
+      }));
+    }
+
+    document.getElementById('csv-upload').addEventListener('click', async () => {
+      const f = document.getElementById('csv-file').files[0];
+      if (!f) return;
+      const msg = document.getElementById('csv-msg');
+      try {
+        const r = await API.upload('/api/admin/students/upload', f);
+        msg.innerHTML = `<div class="banner ok">Berhasil: ${r.inserted} baru, ${r.updated} diperbarui.</div>`;
+        loadStudents();
+      } catch (ex) {
+        msg.innerHTML = `<div class="banner err">${ex.message}</div>`;
+      }
+    });
+
+    async function loadQuestions() {
+      const simKey = document.getElementById('q-sim').value;
+      if (!simKey) return;
+      const { questions } = await API.get('/api/admin/questions?sim_key=' + encodeURIComponent(simKey));
+      const list = document.getElementById('q-list');
+      list.innerHTML = questions.map(q => `
+        <div class="q-row" data-id="${q.id}">
+          <div class="row" style="justify-content: space-between;">
+            <div><span class="tag mid">${q.stage}</span> <span class="tag">${q.type}</span> <strong>#${q.order_index}</strong></div>
+            <div><button class="btn btn-secondary edit-btn">Edit</button> <button class="btn btn-bad del-btn">Hapus</button></div>
+          </div>
+          <pre>${escapeHtml(JSON.stringify(q.payload, null, 2))}</pre>
+          <div class="edit-form" style="display:none;">
+            <div class="field"><label>Stage</label>
+              <select class="ef-stage input">
+                <option value="tutorial">tutorial</option>
+                <option value="var_test">var_test</option>
+                <option value="inquiry">inquiry</option>
+                <option value="true_false">true_false</option>
+                <option value="conclusion">conclusion</option>
+              </select>
+            </div>
+            <div class="field"><label>Type</label>
+              <select class="ef-type input">
+                <option value="tutorial_step">tutorial_step</option>
+                <option value="var_test">var_test</option>
+                <option value="simple_mc">simple_mc</option>
+                <option value="complex_mc">complex_mc</option>
+                <option value="true_false">true_false</option>
+                <option value="word_bank">word_bank</option>
+              </select>
+            </div>
+            <div class="field"><label>Order</label><input class="input ef-order" type="number" value="${q.order_index}" /></div>
+            <div class="field"><label>Payload (JSON)</label><textarea class="input ef-payload" rows="8">${escapeHtml(JSON.stringify(q.payload, null, 2))}</textarea></div>
+            <button class="btn save-btn">Simpan</button>
+          </div>
+        </div>
+      `).join('');
+      list.querySelectorAll('.q-row').forEach(row => {
+        const id = row.dataset.id;
+        row.querySelector('.edit-btn').addEventListener('click', () => {
+          row.classList.add('editing');
+          row.querySelector('.edit-form').style.display = '';
+          const q = questions.find(x => String(x.id) === id);
+          row.querySelector('.ef-stage').value = q.stage;
+          row.querySelector('.ef-type').value = q.type;
+        });
+        row.querySelector('.save-btn').addEventListener('click', async () => {
+          let payload;
+          try { payload = JSON.parse(row.querySelector('.ef-payload').value); }
+          catch (e) { alert('Payload bukan JSON valid: ' + e.message); return; }
+          await API.put('/api/admin/questions/' + id, {
+            stage: row.querySelector('.ef-stage').value,
+            type: row.querySelector('.ef-type').value,
+            order_index: parseInt(row.querySelector('.ef-order').value, 10),
+            payload
+          });
+          loadQuestions();
+        });
+        row.querySelector('.del-btn').addEventListener('click', async () => {
+          if (!confirm('Hapus soal ini?')) return;
+          await API.del('/api/admin/questions/' + id);
+          loadQuestions();
+        });
+      });
+    }
+
+    async function newQuestion() {
+      const simKey = document.getElementById('q-sim').value;
+      const stage = prompt('Stage (tutorial/var_test/inquiry/true_false/conclusion):', 'inquiry');
+      if (!stage) return;
+      const type = prompt('Type (simple_mc/complex_mc/true_false/word_bank/tutorial_step/var_test):', 'simple_mc');
+      if (!type) return;
+      const payloadStr = prompt('Payload JSON:', '{"question":"...","options":["A","B"],"answer":0}');
+      if (!payloadStr) return;
+      try {
+        const payload = JSON.parse(payloadStr);
+        await API.post('/api/admin/questions', { sim_key: simKey, stage, type, order_index: 999, payload });
+        loadQuestions();
+      } catch (e) { alert(e.message); }
+    }
+
+    async function loadResponses() {
+      const { responses } = await API.get('/api/admin/responses');
+      const html = `
+        <table><thead><tr><th>Waktu</th><th>NIS</th><th>Nama</th><th>Kelas</th><th>Sim</th><th>Tahap</th><th>Tipe</th><th>Benar?</th><th>Jawaban</th></tr></thead><tbody>
+        ${responses.map(r => `
+          <tr>
+            <td style="font-size:11px;">${new Date(r.submitted_at).toLocaleString('id-ID')}</td>
+            <td>${r.nis}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.class_name||'')}</td>
+            <td>${r.sim_key}</td><td>${r.stage}</td><td>${r.type}</td>
+            <td>${r.is_correct === true ? '<span class="tag ok">✓</span>' : r.is_correct === false ? '<span class="tag no">✗</span>' : '<span class="tag mid">—</span>'}</td>
+            <td style="font-size:11px;">${escapeHtml(JSON.stringify(r.answer))}</td>
+          </tr>`).join('')}
+        </tbody></table>
+      `;
+      document.getElementById('resp-table').innerHTML = html;
+    }
+
+    async function loadSummary() {
+      const { students } = await API.get('/api/admin/summary');
+      const html = `
+        <table><thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Sim Selesai</th><th>Total Jawaban</th><th>Benar</th></tr></thead><tbody>
+        ${students.map(s => `<tr><td>${s.nis}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.class_name||'')}</td><td>${s.sims_completed}/6</td><td>${s.answers}</td><td>${s.correct}</td></tr>`).join('')}
+        </tbody></table>
+      `;
+      document.getElementById('summary-table').innerHTML = html;
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+    checkAuth();
+  </script>
+</body>
+</html>

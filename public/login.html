@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login Siswa — Ujian Fisika</title>
+  <link rel="stylesheet" href="/shared/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="center" style="background: linear-gradient(135deg, #1e3a8a, #06b6d4);">
+    <div class="card" style="max-width: 420px; width: 90%;">
+      <h1>Login Siswa</h1>
+      <p class="muted">Masukkan NIS dan Nomor Peserta yang sudah dibagikan.</p>
+      <div id="err" class="banner err" style="display:none;"></div>
+      <form id="form">
+        <div class="field">
+          <label>NIS</label>
+          <input class="input" type="text" id="nis" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label>Nomor Peserta</label>
+          <input class="input" type="text" id="examinee" autocomplete="off" required />
+        </div>
+        <button class="btn" type="submit" style="width: 100%;">Masuk</button>
+      </form>
+      <p style="margin-top: 16px;"><a href="/">← Kembali ke beranda</a></p>
+    </div>
+  </div>
+  <script src="/shared/api.js"></script>
+  <script>
+    const form = document.getElementById('form');
+    const err = document.getElementById('err');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.style.display = 'none';
+      try {
+        await API.post('/api/auth/student/login', {
+          nis: document.getElementById('nis').value,
+          examinee_no: document.getElementById('examinee').value
+        });
+        window.location.href = '/dashboard.html';
+      } catch (ex) {
+        err.textContent = ex.message;
+        err.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -7,17 +7,30 @@
   <link rel="stylesheet" href="/shared/overlay.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
 </head>
-<body style="margin:0; padding:0; background:#000;">
+<body>
+  <!-- Top bar -->
   <div class="sim-topbar">
     <div class="left">
       <a href="/dashboard.html">← Dashboard</a>
       <strong id="sim-title">Memuat...</strong>
     </div>
-    <div>
-      <button id="toggle-quiz">📝 Buka Quiz</button>
+    <div class="right">
+      <button id="toggle-quiz" title="Sembunyikan/tampilkan panel quiz">◀ Sembunyikan Quiz</button>
     </div>
   </div>
-  <iframe id="sim-host" src="about:blank" allow="fullscreen" allowfullscreen></iframe>
+
+  <!-- Split layout -->
+  <div id="sim-layout">
+    <div id="sim-pane">
+      <iframe id="sim-host" src="about:blank" allow="fullscreen" allowfullscreen></iframe>
+    </div>
+    <div id="quiz-pane">
+      <!-- quiz panel injected here by overlay.js -->
+    </div>
+  </div>
+
+  <!-- Mobile floating fallback (hidden on desktop, shown on narrow screens) -->
+  <div id="mobile-overlay-root"></div>
 
   <script src="/shared/api.js"></script>
   <script src="/shared/overlay.js"></script>
@@ -26,6 +39,7 @@
       const params = new URLSearchParams(window.location.search);
       const key = params.get('key');
       if (!key) { window.location.href = '/dashboard.html'; return; }
+
       let meta;
       try {
         meta = await API.get(`/api/quest/sim/${encodeURIComponent(key)}`);
@@ -34,15 +48,17 @@
         window.location.href = '/dashboard.html';
         return;
       }
+
       document.getElementById('sim-title').textContent = meta.sim.title;
       document.getElementById('sim-host').src = meta.sim.embed_path;
       await QuizOverlay.init(key);
-      document.getElementById('toggle-quiz').addEventListener('click', () => {
-        const panel = document.getElementById('quiz-panel');
-        const fab = document.getElementById('quiz-fab');
-        const open = panel.classList.contains('hidden');
-        panel.classList.toggle('hidden', !open);
-        fab.style.display = open ? 'none' : 'block';
+
+      // Topbar toggle: collapse/expand the quiz pane
+      const toggleBtn = document.getElementById('toggle-quiz');
+      toggleBtn.addEventListener('click', () => {
+        const layout = document.getElementById('sim-layout');
+        const collapsed = layout.classList.toggle('quiz-collapsed');
+        toggleBtn.textContent = collapsed ? '▶ Buka Quiz' : '◀ Sembunyikan Quiz';
       });
     })();
   </script>

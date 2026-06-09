@@ -37,15 +37,23 @@
     render();
   }
 
+  // True when the page has the split-screen pane (#quiz-pane).
+  function isSplitMode() {
+    return window.innerWidth > 860 && !!document.getElementById('quiz-pane');
+  }
+
   function buildUi() {
-    root = document.createElement('div');
-    root.innerHTML = `
-      <button id="quiz-fab" title="Buka Quiz">?<span class="badge" id="quiz-fab-badge"></span></button>
+    const split = isSplitMode();
+
+    // FAB only needed in mobile/floating mode
+    const fabHtml = `<button id="quiz-fab" title="Buka Quiz">📝<span class="badge" id="quiz-fab-badge"></span></button>`;
+
+    const panelHtml = `
       <div id="quiz-panel">
         <div class="qp-header" id="qp-header">
-          <div class="qp-title">📝 Quest: <span id="qp-sim-title"></span></div>
+          <div class="qp-title">📝 <span id="qp-sim-title"></span></div>
           <div class="qp-actions">
-            <button id="qp-min" title="Minimize">–</button>
+            ${split ? '' : '<button id="qp-min" title="Minimize">–</button>'}
           </div>
         </div>
         <div class="qp-stages" id="qp-stages"></div>
@@ -59,22 +67,50 @@
         </div>
       </div>
     `;
-    document.body.appendChild(root);
+
+    if (split) {
+      // Desktop: panel lives inside #quiz-pane
+      const pane = document.getElementById('quiz-pane');
+      pane.innerHTML = panelHtml;
+      // FAB still appended to body for the resize edge-case
+      const fabEl = document.createElement('div');
+      fabEl.innerHTML = fabHtml;
+      document.body.appendChild(fabEl);
+    } else {
+      // Mobile: everything floats over the sim
+      root = document.createElement('div');
+      root.innerHTML = fabHtml + panelHtml;
+      document.body.appendChild(root);
+    }
+
     panel = document.getElementById('quiz-panel');
     fab = document.getElementById('quiz-fab');
+
     document.getElementById('qp-sim-title').textContent = state.title;
-    document.getElementById('qp-min').addEventListener('click', () => togglePanel(false));
-    fab.addEventListener('click', () => togglePanel(true));
+
+    const minBtn = document.getElementById('qp-min');
+    if (minBtn) minBtn.addEventListener('click', () => togglePanel(false));
+    if (fab) fab.addEventListener('click', () => togglePanel(true));
+
     document.getElementById('qp-prev').addEventListener('click', () => move(-1));
     document.getElementById('qp-next').addEventListener('click', () => onNext());
-    enableDrag();
+
+    if (!split) enableDrag();
     togglePanel(true);
+
+    // Re-evaluate on resize so crossing the breakpoint works
+    window.addEventListener('resize', () => updateBadge());
   }
 
   function togglePanel(open) {
     state.open = open;
-    panel.classList.toggle('hidden', !open);
-    fab.style.display = open ? 'none' : 'block';
+    if (isSplitMode()) {
+      // In split mode, toggling is handled by the topbar button collapsing the pane
+      panel.classList.remove('hidden');
+    } else {
+      panel.classList.toggle('hidden', !open);
+      if (fab) fab.style.display = open ? 'none' : 'block';
+    }
     updateBadge();
   }
 
@@ -88,8 +124,10 @@
 
   function enableDrag() {
     const header = document.getElementById('qp-header');
+    if (!header) return;
     let sx, sy, ox, oy, dragging = false;
     header.addEventListener('mousedown', (e) => {
+      if (isSplitMode()) return;
       dragging = true;
       const rect = panel.getBoundingClientRect();
       sx = e.clientX; sy = e.clientY; ox = rect.left; oy = rect.top;

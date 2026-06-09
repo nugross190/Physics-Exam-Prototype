@@ -51,6 +51,37 @@ router.delete('/students/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// Reset a single student's progress: wipe all responses and reset their session pointer.
+const delStudentResponses = db.prepare(`DELETE FROM responses WHERE student_id = ?`);
+const resetStudentSession = db.prepare(`
+  UPDATE sessions
+     SET completed_sims = '[]',
+         current_sim = 'newton',
+         current_stage = 'tutorial',
+         last_seen_at = datetime('now')
+   WHERE student_id = ?
+`);
+router.post('/students/:id/reset', (req, res) => {
+  const txn = db.transaction((id) => {
+    const r = delStudentResponses.run(id);
+    resetStudentSession.run(id);
+    return r.changes;
+  });
+  const deleted = txn(req.params.id);
+  res.json({ ok: true, deleted });
+});
+
+// Reset ALL students (nuclear option for re-running the whole exam).
+router.post('/responses/reset-all', (req, res) => {
+  const txn = db.transaction(() => {
+    const r = db.prepare(`DELETE FROM responses`).run();
+    db.prepare(`UPDATE sessions SET completed_sims='[]', current_sim='newton', current_stage='tutorial', last_seen_at=datetime('now')`).run();
+    return r.changes;
+  });
+  const deleted = txn();
+  res.json({ ok: true, deleted });
+});
+
 // ── Questions ────────────────────────────────────────────────────────────
 const listQuestionsBySim = db.prepare(`SELECT id, sim_key, stage, type, order_index, payload FROM questions WHERE sim_key = ? ORDER BY order_index, id`);
 const listAllQuestions = db.prepare(`SELECT id, sim_key, stage, type, order_index, payload FROM questions ORDER BY sim_key, order_index, id`);

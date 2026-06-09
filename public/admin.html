@@ -141,16 +141,42 @@
     async function loadStudents() {
       const { students } = await API.get('/api/admin/students');
       const html = `
-        <table><thead><tr><th>NIS</th><th>No Peserta</th><th>Nama</th><th>Kelas</th><th></th></tr></thead><tbody>
-        ${students.map(s => `<tr><td>${s.nis}</td><td>${s.examinee_no}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.class_name||'')}</td><td><button class="btn btn-bad" data-id="${s.id}">Hapus</button></td></tr>`).join('')}
+        <div class="row" style="margin-bottom:10px;">
+          <button class="btn btn-bad" id="reset-all-btn">⟲ Reset SEMUA Jawaban</button>
+        </div>
+        <table><thead><tr><th>NIS</th><th>No Peserta</th><th>Nama</th><th>Kelas</th><th>Aksi</th></tr></thead><tbody>
+        ${students.map(s => `<tr>
+          <td>${s.nis}</td><td>${s.examinee_no}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.class_name||'')}</td>
+          <td>
+            <button class="btn btn-secondary reset-btn" data-id="${s.id}" data-name="${escapeHtml(s.name)}">⟲ Reset</button>
+            <button class="btn btn-bad del-btn" data-id="${s.id}">Hapus</button>
+          </td>
+        </tr>`).join('')}
         </tbody></table>
       `;
       document.getElementById('students-table').innerHTML = html;
-      document.querySelectorAll('#students-table button[data-id]').forEach(b => b.addEventListener('click', async () => {
+
+      document.querySelectorAll('#students-table .del-btn').forEach(b => b.addEventListener('click', async () => {
         if (!confirm('Hapus siswa ini?')) return;
         await API.del('/api/admin/students/' + b.dataset.id);
         loadStudents();
       }));
+      document.querySelectorAll('#students-table .reset-btn').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm(`Reset semua jawaban untuk ${b.dataset.name}? Siswa akan mulai dari simulasi pertama.`)) return;
+        const r = await API.post('/api/admin/students/' + b.dataset.id + '/reset');
+        alert(`Reset selesai. ${r.deleted} jawaban dihapus.`);
+        loadStudents();
+        loadSummary();
+      }));
+      document.getElementById('reset-all-btn').addEventListener('click', async () => {
+        if (!confirm('⚠ Reset SEMUA jawaban dari SEMUA siswa? Tidak bisa dibatalkan.')) return;
+        if (!confirm('Yakin? Ketik OK pada prompt berikutnya untuk konfirmasi.')) return;
+        const t = prompt('Ketik "RESET" untuk konfirmasi:');
+        if (t !== 'RESET') return;
+        const r = await API.post('/api/admin/responses/reset-all');
+        alert(`Reset selesai. ${r.deleted} jawaban dihapus.`);
+        loadSummary(); loadResponses();
+      });
     }
 
     document.getElementById('csv-upload').addEventListener('click', async () => {

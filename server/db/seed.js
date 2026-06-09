@@ -102,6 +102,16 @@ const QUESTIONS = {
   ]
 };
 
+// Sample students so local testing works without a CSV upload.
+// These mirror scripts/sample-students.csv exactly.
+const SAMPLE_STUDENTS = [
+  { nis: '2024001', examinee_no: 'P001', name: 'Ahmad Setiawan',  class_name: 'XI-IPA-1' },
+  { nis: '2024002', examinee_no: 'P002', name: 'Budi Santoso',    class_name: 'XI-IPA-1' },
+  { nis: '2024003', examinee_no: 'P003', name: 'Citra Dewi',      class_name: 'XI-IPA-1' },
+  { nis: '2024004', examinee_no: 'P004', name: 'Dewi Lestari',    class_name: 'XI-IPA-2' },
+  { nis: '2024005', examinee_no: 'P005', name: 'Eka Prasetya',    class_name: 'XI-IPA-2' }
+];
+
 const upsertSim = db.prepare(`
   INSERT INTO sims (sim_key, title, order_index, embed_path) VALUES (?, ?, ?, ?)
   ON CONFLICT(sim_key) DO UPDATE SET title=excluded.title, order_index=excluded.order_index, embed_path=excluded.embed_path
@@ -111,6 +121,10 @@ const insertQuestion = db.prepare(`INSERT INTO questions (sim_key, stage, type, 
 const upsertAdmin = db.prepare(`
   INSERT INTO admins (username, password_hash) VALUES (?, ?)
   ON CONFLICT(username) DO UPDATE SET password_hash=excluded.password_hash
+`);
+const upsertStudent = db.prepare(`
+  INSERT INTO students (nis, examinee_no, name, class_name) VALUES (?, ?, ?, ?)
+  ON CONFLICT(nis) DO NOTHING
 `);
 
 const txn = db.transaction(() => {
@@ -130,6 +144,13 @@ const txn = db.transaction(() => {
   const adminPass = process.env.ADMIN_PASSWORD || 'changeme';
   upsertAdmin.run(adminUser, bcrypt.hashSync(adminPass, 10));
   console.log(`[seed] admin user ready: ${adminUser}`);
+
+  let studentCount = 0;
+  for (const s of SAMPLE_STUDENTS) {
+    const info = upsertStudent.run(s.nis, s.examinee_no, s.name, s.class_name);
+    if (info.changes) studentCount++;
+  }
+  if (studentCount) console.log(`[seed] inserted ${studentCount} sample students`);
 });
 
 txn();

@@ -69,15 +69,11 @@
     `;
 
     if (split) {
-      // Desktop: panel lives inside #quiz-pane
+      // Desktop: panel lives inside #quiz-pane; no FAB (topbar handles toggle).
       const pane = document.getElementById('quiz-pane');
       pane.innerHTML = panelHtml;
-      // FAB still appended to body for the resize edge-case
-      const fabEl = document.createElement('div');
-      fabEl.innerHTML = fabHtml;
-      document.body.appendChild(fabEl);
     } else {
-      // Mobile: everything floats over the sim
+      // Mobile: floating panel + FAB over the sim.
       root = document.createElement('div');
       root.innerHTML = fabHtml + panelHtml;
       document.body.appendChild(root);

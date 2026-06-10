@@ -38,20 +38,39 @@
     (async function () {
       const params = new URLSearchParams(window.location.search);
       const key = params.get('key');
+      const isPreview = params.get('preview') === '1';
       if (!key) { window.location.href = '/dashboard.html'; return; }
+
+      // In preview mode the admin cookie is used; no student session needed.
+      const endpoint = isPreview
+        ? `/api/admin/sim/${encodeURIComponent(key)}/preview`
+        : `/api/quest/sim/${encodeURIComponent(key)}`;
 
       let meta;
       try {
-        meta = await API.get(`/api/quest/sim/${encodeURIComponent(key)}`);
+        meta = await API.get(endpoint);
       } catch (err) {
         alert(err.message);
-        window.location.href = '/dashboard.html';
+        window.location.href = isPreview ? '/admin.html' : '/dashboard.html';
         return;
       }
 
-      document.getElementById('sim-title').textContent = meta.sim.title;
+      document.getElementById('sim-title').textContent = meta.sim.title + (isPreview ? ' — MODE PREVIEW' : '');
       document.getElementById('sim-host').src = meta.sim.embed_path;
-      await QuizOverlay.init(key);
+
+      if (isPreview) {
+        // Show a sticky preview banner above the topbar content.
+        const banner = document.createElement('div');
+        banner.id = 'preview-banner';
+        banner.style.cssText = 'background:#f59e0b;color:#78350f;font-weight:700;font-size:12px;text-align:center;padding:4px 8px;position:fixed;top:0;left:0;right:0;z-index:200;letter-spacing:.03em;';
+        banner.textContent = '⚠ MODE PREVIEW — jawaban tidak direkam';
+        document.body.prepend(banner);
+        // Push topbar down by banner height
+        document.querySelector('.sim-topbar').style.top = banner.offsetHeight + 'px';
+        document.getElementById('sim-layout').style.top = (44 + banner.offsetHeight) + 'px';
+      }
+
+      await QuizOverlay.init(key, { previewMode: isPreview, previewData: isPreview ? meta : null });
 
       // Topbar toggle: collapse/expand the quiz pane
       const toggleBtn = document.getElementById('toggle-quiz');

@@ -180,9 +180,10 @@
       <div class="card">
         <h2>Editor Soal</h2>
         <p class="muted" style="margin-top:-8px;">Satu daftar soal per simulasi — campur jenis soal apa pun, urutkan bebas dengan tombol ↑↓.</p>
-        <div class="row" style="margin-bottom: 16px;">
+        <div class="row" style="margin-bottom: 16px; align-items: center;">
           <label><strong>Simulasi:</strong></label>
           <select id="q-sim" style="min-width: 240px;"></select>
+          <button class="btn btn-secondary" id="preview-sim-btn" title="Buka simulasi ini beserta soalnya untuk dicoba — jawaban tidak direkam">🔍 Preview Sim</button>
         </div>
         <div id="q-list"></div>
       </div>
@@ -256,6 +257,12 @@
       const sel = document.getElementById('q-sim');
       sel.innerHTML = sims.map(x => `<option value="${x.sim_key}">${x.title}</option>`).join('');
       sel.addEventListener('change', loadQuestions);
+
+      document.getElementById('preview-sim-btn').addEventListener('click', () => {
+        const key = document.getElementById('q-sim').value;
+        if (key) window.open(`/sim.html?key=${encodeURIComponent(key)}&preview=1`, '_blank');
+      });
+
       await Promise.all([loadStudents(), loadQuestions(), loadResponses(), loadSummary()]);
     }
 

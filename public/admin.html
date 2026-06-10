@@ -10,10 +10,132 @@
     .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
     .tabs button { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-weight: 600; }
     .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .col-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     pre { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; }
-    .q-row { padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: #fff; }
-    .q-row.editing { border-color: var(--accent); }
+
+    /* ─── Question editor ─── */
+    .stage-section { margin-bottom: 24px; }
+    .stage-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px;
+      background: linear-gradient(90deg, #eff6ff, #f8fafc);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    .stage-header .stage-icon { font-size: 20px; }
+    .stage-header .stage-name { font-weight: 700; font-size: 15px; color: var(--ink); }
+    .stage-header .stage-count { margin-left: auto; font-size: 12px; color: var(--ink-soft); }
+    .stage-header .stage-add { font-size: 12px; padding: 5px 10px; }
+
+    .q-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      margin-bottom: 10px;
+      overflow: hidden;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .q-card:hover { box-shadow: 0 2px 8px rgba(15,23,42,.06); }
+    .q-card.editing { border-color: var(--accent); box-shadow: 0 4px 16px rgba(37,99,235,.15); }
+
+    .q-card-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .q-card-header .order-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px;
+      background: var(--accent); color: #fff;
+      border-radius: 50%;
+      font-weight: 700; font-size: 11px;
+    }
+    .q-card-header .type-label { font-weight: 600; color: var(--ink); }
+    .q-card-header .actions { margin-left: auto; display: flex; gap: 6px; }
+    .q-card-header .actions button { padding: 4px 10px; font-size: 12px; }
+
+    .q-card-body { padding: 12px 16px; }
+    .q-card-body .question-text { font-weight: 600; margin-bottom: 8px; font-size: 14px; color: var(--ink); }
+    .q-card-body .options-preview { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+    .q-card-body .options-preview li {
+      padding: 6px 10px; margin: 4px 0;
+      border-radius: 6px; background: #f8fafc;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .q-card-body .options-preview li.correct { background: #dcfce7; color: #166534; font-weight: 500; }
+    .q-card-body .options-preview .mark { font-weight: 700; }
+    .q-card-body .hint-text { font-size: 12px; color: var(--ink-soft); font-style: italic; margin-top: 4px; }
+
+    /* Edit form */
+    .q-edit-form { padding: 16px; border-top: 1px solid var(--border); background: #fafbfc; }
+    .q-edit-form .field { margin-bottom: 12px; }
+    .q-edit-form label.field-label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 4px; }
+    .q-edit-form textarea { min-height: 60px; resize: vertical; }
+    .q-edit-form .options-list { display: flex; flex-direction: column; gap: 6px; }
+    .q-edit-form .option-row {
+      display: flex; gap: 8px; align-items: center;
+      padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: #fff;
+    }
+    .q-edit-form .option-row.correct-row { border-color: #16a34a; background: #f0fdf4; }
+    .q-edit-form .option-row input[type=text] { flex: 1; border: none; outline: none; font-size: 13px; padding: 4px 6px; background: transparent; }
+    .q-edit-form .option-row .opt-mark {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 600; color: var(--ink-soft);
+    }
+    .q-edit-form .option-row .del-opt {
+      background: transparent; border: none; color: var(--bad); cursor: pointer;
+      font-size: 16px; padding: 0 6px;
+    }
+    .q-edit-form .add-opt {
+      align-self: flex-start;
+      background: transparent; color: var(--accent);
+      border: 1px dashed var(--accent); padding: 6px 12px; border-radius: 8px;
+      font-size: 12px; cursor: pointer; font-weight: 600;
+    }
+    .q-edit-form .tf-toggle { display: flex; gap: 8px; }
+    .q-edit-form .tf-toggle button {
+      flex: 1; padding: 10px; border-radius: 8px; border: 2px solid var(--border);
+      background: #fff; cursor: pointer; font-weight: 600;
+    }
+    .q-edit-form .tf-toggle button.active.t { border-color: #16a34a; background: #dcfce7; color: #166534; }
+    .q-edit-form .tf-toggle button.active.f { border-color: #dc2626; background: #fee2e2; color: #991b1b; }
+    .q-edit-form .wb-hint {
+      background: #fef3c7; color: #92400e; padding: 8px 12px; border-radius: 6px;
+      font-size: 12px; margin-bottom: 8px;
+    }
+    .q-edit-form .form-actions {
+      display: flex; gap: 8px; justify-content: flex-end;
+      padding-top: 8px; border-top: 1px solid var(--border); margin-top: 12px;
+    }
+    .q-edit-form .json-advanced {
+      margin-top: 10px; padding: 8px;
+      background: #1e293b; border-radius: 6px;
+    }
+    .q-edit-form .json-advanced summary { color: #cbd5e1; font-size: 11px; cursor: pointer; padding: 4px; }
+    .q-edit-form .json-advanced pre { margin: 6px 0 0; font-size: 11px; max-height: 200px; }
+
+    /* New question wizard */
+    .new-q-modal {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, .5);
+      display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .new-q-modal .modal-card {
+      background: #fff; border-radius: 14px; padding: 24px;
+      max-width: 480px; width: 90%; max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    }
+    .new-q-modal h3 { margin-top: 0; }
+    .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .type-grid button {
+      padding: 12px; border-radius: 8px; border: 2px solid var(--border);
+      background: #fff; cursor: pointer; text-align: left;
+    }
+    .type-grid button:hover { border-color: var(--accent); background: #eff6ff; }
+    .type-grid button .t-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+    .type-grid button .t-label { font-weight: 600; font-size: 13px; display: block; }
+    .type-grid button .t-stage { font-size: 11px; color: var(--ink-soft); }
   </style>
 </head>
 <body>
@@ -57,10 +179,10 @@
     <div id="tab-questions" class="tab-panel" style="display:none;">
       <div class="card">
         <h2>Editor Soal</h2>
-        <div class="row" style="margin-bottom: 12px;">
-          <label>Simulasi:</label>
-          <select id="q-sim"></select>
-          <button class="btn btn-secondary" id="q-new">+ Soal Baru</button>
+        <p class="muted" style="margin-top:-8px;">Pilih simulasi, lalu kelola soal per tahap. Jenis soal dipilih saat menambah soal baru.</p>
+        <div class="row" style="margin-bottom: 16px;">
+          <label><strong>Simulasi:</strong></label>
+          <select id="q-sim" style="min-width: 240px;"></select>
         </div>
         <div id="q-list"></div>
       </div>
@@ -134,7 +256,6 @@
       const sel = document.getElementById('q-sim');
       sel.innerHTML = sims.map(x => `<option value="${x.sim_key}">${x.title}</option>`).join('');
       sel.addEventListener('change', loadQuestions);
-      document.getElementById('q-new').addEventListener('click', newQuestion);
       await Promise.all([loadStudents(), loadQuestions(), loadResponses(), loadSummary()]);
     }
 
@@ -192,86 +313,427 @@
       }
     });
 
-    async function loadQuestions() {
-      const simKey = document.getElementById('q-sim').value;
-      if (!simKey) return;
-      const { questions } = await API.get('/api/admin/questions?sim_key=' + encodeURIComponent(simKey));
-      const list = document.getElementById('q-list');
-      list.innerHTML = questions.map(q => `
-        <div class="q-row" data-id="${q.id}">
-          <div class="row" style="justify-content: space-between;">
-            <div><span class="tag mid">${q.stage}</span> <span class="tag">${q.type}</span> <strong>#${q.order_index}</strong></div>
-            <div><button class="btn btn-secondary edit-btn">Edit</button> <button class="btn btn-bad del-btn">Hapus</button></div>
-          </div>
-          <pre>${escapeHtml(JSON.stringify(q.payload, null, 2))}</pre>
-          <div class="edit-form" style="display:none;">
-            <div class="field"><label>Stage</label>
-              <select class="ef-stage input">
-                <option value="tutorial">tutorial</option>
-                <option value="var_test">var_test</option>
-                <option value="inquiry">inquiry</option>
-                <option value="true_false">true_false</option>
-                <option value="conclusion">conclusion</option>
-              </select>
-            </div>
-            <div class="field"><label>Type</label>
-              <select class="ef-type input">
-                <option value="tutorial_step">tutorial_step</option>
-                <option value="var_test">var_test</option>
-                <option value="simple_mc">simple_mc</option>
-                <option value="complex_mc">complex_mc</option>
-                <option value="true_false">true_false</option>
-                <option value="word_bank">word_bank</option>
-              </select>
-            </div>
-            <div class="field"><label>Order</label><input class="input ef-order" type="number" value="${q.order_index}" /></div>
-            <div class="field"><label>Payload (JSON)</label><textarea class="input ef-payload" rows="8">${escapeHtml(JSON.stringify(q.payload, null, 2))}</textarea></div>
-            <button class="btn save-btn">Simpan</button>
-          </div>
-        </div>
-      `).join('');
-      list.querySelectorAll('.q-row').forEach(row => {
-        const id = row.dataset.id;
-        row.querySelector('.edit-btn').addEventListener('click', () => {
-          row.classList.add('editing');
-          row.querySelector('.edit-form').style.display = '';
-          const q = questions.find(x => String(x.id) === id);
-          row.querySelector('.ef-stage').value = q.stage;
-          row.querySelector('.ef-type').value = q.type;
-        });
-        row.querySelector('.save-btn').addEventListener('click', async () => {
-          let payload;
-          try { payload = JSON.parse(row.querySelector('.ef-payload').value); }
-          catch (e) { alert('Payload bukan JSON valid: ' + e.message); return; }
-          await API.put('/api/admin/questions/' + id, {
-            stage: row.querySelector('.ef-stage').value,
-            type: row.querySelector('.ef-type').value,
-            order_index: parseInt(row.querySelector('.ef-order').value, 10),
-            payload
+    // ─── Question editor (Google Forms style) ─────────────────────────
+    const STAGE_META = [
+      { key: 'tutorial',   label: 'Tutorial',     icon: '📖', desc: 'Langkah perkenalan simulasi' },
+      { key: 'var_test',   label: 'Uji Variabel', icon: '🔬', desc: 'Eksperimen variabel' },
+      { key: 'inquiry',    label: 'Inkuiri',      icon: '❓', desc: 'PG dan PG kompleks' },
+      { key: 'true_false', label: 'Benar/Salah',  icon: '✓',  desc: 'Pernyataan benar/salah' },
+      { key: 'conclusion', label: 'Kesimpulan',   icon: '🎯', desc: 'Isian bank kata' }
+    ];
+
+    const TYPE_META = {
+      tutorial_step: { label: 'Langkah Tutorial', icon: '📖', stage: 'tutorial' },
+      var_test:      { label: 'Uji Variabel',     icon: '🔬', stage: 'var_test' },
+      simple_mc:     { label: 'Pilihan Ganda',    icon: '◉',  stage: 'inquiry' },
+      complex_mc:    { label: 'PG Kompleks',      icon: '☑',  stage: 'inquiry' },
+      true_false:    { label: 'Benar / Salah',    icon: '✓✗', stage: 'true_false' },
+      word_bank:     { label: 'Isian Bank Kata',  icon: '🧩', stage: 'conclusion' }
+    };
+
+    function defaultPayload(type) {
+      switch (type) {
+        case 'tutorial_step': return { title: '', body: '' };
+        case 'var_test':      return { prompt: '', hint: '' };
+        case 'simple_mc':     return { question: '', options: ['', '', '', ''], answer: 0 };
+        case 'complex_mc':    return { question: '', options: ['', '', '', ''], answers: [] };
+        case 'true_false':    return { statement: '', answer: true };
+        case 'word_bank':     return { template: '', bank: ['', '', ''], blanks: [] };
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    function renderPreview(q) {
+      const p = q.payload || {};
+      switch (q.type) {
+        case 'tutorial_step':
+          return `<div class="question-text">${escapeHtml(p.title || '(tanpa judul)')}</div>
+                  <div style="color:#475569;font-size:13px;">${escapeHtml(p.body || '')}</div>`;
+        case 'var_test':
+          return `<div class="question-text">${escapeHtml(p.prompt || '(tanpa prompt)')}</div>
+                  ${p.hint ? `<div class="hint-text">💡 ${escapeHtml(p.hint)}</div>` : ''}`;
+        case 'simple_mc': {
+          const opts = (p.options || []).map((o, i) => `
+            <li class="${i === p.answer ? 'correct' : ''}">
+              <span class="mark">${i === p.answer ? '◉' : '○'}</span> ${escapeHtml(o)}
+            </li>`).join('');
+          return `<div class="question-text">${escapeHtml(p.question || '')}</div>
+                  <ul class="options-preview">${opts}</ul>`;
+        }
+        case 'complex_mc': {
+          const ans = new Set(p.answers || []);
+          const opts = (p.options || []).map((o, i) => `
+            <li class="${ans.has(i) ? 'correct' : ''}">
+              <span class="mark">${ans.has(i) ? '☑' : '☐'}</span> ${escapeHtml(o)}
+            </li>`).join('');
+          return `<div class="question-text">${escapeHtml(p.question || '')}</div>
+                  <ul class="options-preview">${opts}</ul>`;
+        }
+        case 'true_false':
+          return `<div class="question-text">${escapeHtml(p.statement || '')}</div>
+                  <div style="color: ${p.answer ? '#16a34a' : '#dc2626'}; font-weight: 600; font-size: 13px;">
+                    Jawaban: ${p.answer ? '✓ Benar' : '✗ Salah'}
+                  </div>`;
+        case 'word_bank': {
+          const filledTemplate = (p.template || '').replace(/__(\d+)__/g, (_, n) => {
+            const idx = parseInt(n, 10) - 1;
+            const w = (p.blanks || [])[idx];
+            return `<span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-weight:600;">${escapeHtml(w || `[${n}]`)}</span>`;
           });
-          loadQuestions();
+          return `<div class="question-text">${filledTemplate}</div>
+                  <div class="hint-text">Bank kata: ${(p.bank || []).map(escapeHtml).join(', ')}</div>`;
+        }
+      }
+      return '<em>tipe tidak dikenal</em>';
+    }
+
+    function renderForm(q) {
+      const p = q.payload || {};
+      switch (q.type) {
+        case 'tutorial_step':
+          return `
+            <div class="field"><label class="field-label">Judul</label>
+              <input class="input" data-field="title" value="${escapeHtml(p.title || '')}" /></div>
+            <div class="field"><label class="field-label">Isi penjelasan</label>
+              <textarea class="input" data-field="body" rows="4">${escapeHtml(p.body || '')}</textarea></div>`;
+
+        case 'var_test':
+          return `
+            <div class="field"><label class="field-label">Instruksi eksperimen</label>
+              <textarea class="input" data-field="prompt" rows="3">${escapeHtml(p.prompt || '')}</textarea></div>
+            <div class="field"><label class="field-label">Petunjuk (opsional)</label>
+              <input class="input" data-field="hint" value="${escapeHtml(p.hint || '')}" /></div>`;
+
+        case 'simple_mc': {
+          const opts = (p.options || []).map((o, i) => optionRow(i, o, i === p.answer, 'simple_mc')).join('');
+          return `
+            <div class="field"><label class="field-label">Pertanyaan</label>
+              <textarea class="input" data-field="question" rows="3">${escapeHtml(p.question || '')}</textarea></div>
+            <div class="field"><label class="field-label">Pilihan jawaban (centang yang benar)</label>
+              <div class="options-list" data-list="options">${opts}</div>
+              <button type="button" class="add-opt" data-add="option">+ Tambah pilihan</button>
+            </div>`;
+        }
+
+        case 'complex_mc': {
+          const ans = new Set(p.answers || []);
+          const opts = (p.options || []).map((o, i) => optionRow(i, o, ans.has(i), 'complex_mc')).join('');
+          return `
+            <div class="field"><label class="field-label">Pertanyaan</label>
+              <textarea class="input" data-field="question" rows="3">${escapeHtml(p.question || '')}</textarea></div>
+            <div class="field"><label class="field-label">Pilihan jawaban (centang SEMUA yang benar)</label>
+              <div class="options-list" data-list="options">${opts}</div>
+              <button type="button" class="add-opt" data-add="option">+ Tambah pilihan</button>
+            </div>`;
+        }
+
+        case 'true_false':
+          return `
+            <div class="field"><label class="field-label">Pernyataan</label>
+              <textarea class="input" data-field="statement" rows="2">${escapeHtml(p.statement || '')}</textarea></div>
+            <div class="field"><label class="field-label">Jawaban benar:</label>
+              <div class="tf-toggle">
+                <button type="button" data-tf="true"  class="${p.answer === true  ? 'active t' : ''}">✓ Benar</button>
+                <button type="button" data-tf="false" class="${p.answer === false ? 'active f' : ''}">✗ Salah</button>
+              </div>
+            </div>`;
+
+        case 'word_bank': {
+          const bank   = (p.bank   || []).map((w, i) => wbWordRow(i, w, 'bank')).join('');
+          const blanks = (p.blanks || []).map((w, i) => wbWordRow(i, w, 'blanks')).join('');
+          return `
+            <div class="wb-hint">
+              💡 Gunakan <code>__1__</code>, <code>__2__</code>, dst. di template untuk menandai bagian yang harus diisi siswa.
+              Daftar "Jawaban" di bawah harus berurutan sesuai nomor blank.
+            </div>
+            <div class="field"><label class="field-label">Template kalimat</label>
+              <textarea class="input" data-field="template" rows="3" placeholder="Contoh: Hukum Newton II berbunyi __1__ × __2__ = F.">${escapeHtml(p.template || '')}</textarea></div>
+            <div class="field"><label class="field-label">Bank kata (kata-kata pilihan yang ditampilkan)</label>
+              <div class="options-list" data-list="bank">${bank}</div>
+              <button type="button" class="add-opt" data-add="bank">+ Tambah kata</button>
+            </div>
+            <div class="field"><label class="field-label">Jawaban (kata yang benar untuk tiap blank, urut __1__, __2__, …)</label>
+              <div class="options-list" data-list="blanks">${blanks}</div>
+              <button type="button" class="add-opt" data-add="blanks">+ Tambah jawaban</button>
+            </div>`;
+        }
+      }
+      return '<em>tipe tidak dikenal</em>';
+    }
+
+    function optionRow(i, val, isCorrect, type) {
+      const markName = type === 'simple_mc' ? 'radio' : 'checkbox';
+      const inputName = type === 'simple_mc' ? `name="correct"` : '';
+      return `
+        <div class="option-row ${isCorrect ? 'correct-row' : ''}">
+          <label class="opt-mark">
+            <input type="${markName}" ${inputName} class="opt-correct" ${isCorrect ? 'checked' : ''} />
+            <span>Benar</span>
+          </label>
+          <input type="text" class="opt-text" value="${escapeHtml(val || '')}" placeholder="Pilihan jawaban..." />
+          <button type="button" class="del-opt" title="Hapus pilihan">×</button>
+        </div>`;
+    }
+    function wbWordRow(i, val, kind) {
+      return `
+        <div class="option-row">
+          <span class="opt-mark" style="min-width:40px;">${kind === 'blanks' ? `__${i+1}__` : `#${i+1}`}</span>
+          <input type="text" class="opt-text" value="${escapeHtml(val || '')}" placeholder="${kind === 'blanks' ? 'Jawaban...' : 'Kata...'}" />
+          <button type="button" class="del-opt" title="Hapus">×</button>
+        </div>`;
+    }
+
+    function readForm(rowEl, type) {
+      const get = (field) => {
+        const el = rowEl.querySelector(`[data-field="${field}"]`);
+        return el ? el.value : '';
+      };
+      const getList = (listName) => Array.from(rowEl.querySelectorAll(`[data-list="${listName}"] .option-row .opt-text`)).map(i => i.value);
+
+      switch (type) {
+        case 'tutorial_step': return { title: get('title'), body: get('body') };
+        case 'var_test':      return { prompt: get('prompt'), hint: get('hint') };
+        case 'simple_mc': {
+          const options = getList('options');
+          const correctIdx = Array.from(rowEl.querySelectorAll('[data-list="options"] .opt-correct')).findIndex(c => c.checked);
+          return { question: get('question'), options, answer: correctIdx < 0 ? 0 : correctIdx };
+        }
+        case 'complex_mc': {
+          const options = getList('options');
+          const answers = Array.from(rowEl.querySelectorAll('[data-list="options"] .opt-correct'))
+            .map((c, i) => c.checked ? i : -1).filter(i => i >= 0);
+          return { question: get('question'), options, answers };
+        }
+        case 'true_false': {
+          const activeBtn = rowEl.querySelector('.tf-toggle button.active');
+          return { statement: get('statement'), answer: activeBtn ? activeBtn.dataset.tf === 'true' : true };
+        }
+        case 'word_bank':
+          return { template: get('template'), bank: getList('bank'), blanks: getList('blanks') };
+      }
+      return {};
+    }
+
+    function validatePayload(type, payload) {
+      switch (type) {
+        case 'tutorial_step':
+          if (!payload.title?.trim()) return 'Judul tidak boleh kosong';
+          if (!payload.body?.trim())  return 'Isi penjelasan tidak boleh kosong';
+          return null;
+        case 'var_test':
+          if (!payload.prompt?.trim()) return 'Instruksi tidak boleh kosong';
+          return null;
+        case 'simple_mc':
+          if (!payload.question?.trim()) return 'Pertanyaan tidak boleh kosong';
+          if ((payload.options || []).filter(o => o.trim()).length < 2) return 'Minimal 2 pilihan jawaban';
+          if (payload.answer == null || payload.answer < 0) return 'Pilih satu jawaban benar';
+          return null;
+        case 'complex_mc':
+          if (!payload.question?.trim()) return 'Pertanyaan tidak boleh kosong';
+          if ((payload.options || []).filter(o => o.trim()).length < 2) return 'Minimal 2 pilihan jawaban';
+          if (!payload.answers?.length) return 'Centang minimal satu jawaban benar';
+          return null;
+        case 'true_false':
+          if (!payload.statement?.trim()) return 'Pernyataan tidak boleh kosong';
+          return null;
+        case 'word_bank':
+          if (!payload.template?.trim()) return 'Template tidak boleh kosong';
+          if (!payload.bank?.length || payload.bank.every(b => !b.trim())) return 'Bank kata tidak boleh kosong';
+          if (!payload.blanks?.length) return 'Jawaban tidak boleh kosong';
+          const matches = (payload.template.match(/__\d+__/g) || []).length;
+          if (matches !== payload.blanks.length) return `Jumlah blank di template (${matches}) tidak cocok dengan jumlah jawaban (${payload.blanks.length})`;
+          return null;
+      }
+      return null;
+    }
+
+    function wireFormEvents(card, q) {
+      // Toggle "correct" highlight on option rows
+      card.querySelectorAll('.opt-correct').forEach(cb => {
+        cb.addEventListener('change', () => {
+          if (cb.type === 'radio') {
+            card.querySelectorAll('[data-list="options"] .option-row').forEach(r => r.classList.remove('correct-row'));
+          }
+          cb.closest('.option-row').classList.toggle('correct-row', cb.checked);
         });
-        row.querySelector('.del-btn').addEventListener('click', async () => {
-          if (!confirm('Hapus soal ini?')) return;
-          await API.del('/api/admin/questions/' + id);
-          loadQuestions();
+      });
+      // Delete option
+      card.querySelectorAll('.del-opt').forEach(btn => {
+        btn.addEventListener('click', () => btn.closest('.option-row').remove());
+      });
+      // Add option/bank/blank
+      card.querySelectorAll('.add-opt').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const target = btn.dataset.add;
+          const listName = target === 'option' ? 'options' : target;
+          const list = card.querySelector(`[data-list="${listName}"]`);
+          const idx = list.children.length;
+          const html = (target === 'option')
+            ? optionRow(idx, '', false, q.type)
+            : wbWordRow(idx, '', listName);
+          const tmp = document.createElement('div');
+          tmp.innerHTML = html;
+          const node = tmp.firstElementChild;
+          list.appendChild(node);
+          // wire delete
+          node.querySelector('.del-opt').addEventListener('click', () => node.remove());
+          const cb = node.querySelector('.opt-correct');
+          if (cb) cb.addEventListener('change', () => {
+            if (cb.type === 'radio') card.querySelectorAll('[data-list="options"] .option-row').forEach(r => r.classList.remove('correct-row'));
+            node.classList.toggle('correct-row', cb.checked);
+          });
+          // Re-number word_bank blanks
+          if (listName === 'blanks' || listName === 'bank') {
+            Array.from(list.children).forEach((child, i) => {
+              child.querySelector('.opt-mark').textContent = listName === 'blanks' ? `__${i+1}__` : `#${i+1}`;
+            });
+          }
+        });
+      });
+      // True/False toggle
+      card.querySelectorAll('.tf-toggle button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          card.querySelectorAll('.tf-toggle button').forEach(b => b.classList.remove('active', 't', 'f'));
+          btn.classList.add('active', btn.dataset.tf === 'true' ? 't' : 'f');
         });
       });
     }
 
-    async function newQuestion() {
+    async function loadQuestions() {
       const simKey = document.getElementById('q-sim').value;
-      const stage = prompt('Stage (tutorial/var_test/inquiry/true_false/conclusion):', 'inquiry');
-      if (!stage) return;
-      const type = prompt('Type (simple_mc/complex_mc/true_false/word_bank/tutorial_step/var_test):', 'simple_mc');
-      if (!type) return;
-      const payloadStr = prompt('Payload JSON:', '{"question":"...","options":["A","B"],"answer":0}');
-      if (!payloadStr) return;
-      try {
-        const payload = JSON.parse(payloadStr);
-        await API.post('/api/admin/questions', { sim_key: simKey, stage, type, order_index: 999, payload });
-        loadQuestions();
-      } catch (e) { alert(e.message); }
+      if (!simKey) return;
+      const { questions } = await API.get('/api/admin/questions?sim_key=' + encodeURIComponent(simKey));
+      const byStage = Object.fromEntries(STAGE_META.map(s => [s.key, []]));
+      for (const q of questions) (byStage[q.stage] = byStage[q.stage] || []).push(q);
+
+      const list = document.getElementById('q-list');
+      list.innerHTML = STAGE_META.map(stage => {
+        const items = byStage[stage.key] || [];
+        const cards = items.map((q, i) => `
+          <div class="q-card" data-id="${q.id}" data-type="${q.type}">
+            <div class="q-card-header">
+              <span class="order-num">${i + 1}</span>
+              <span class="type-label">${TYPE_META[q.type]?.icon || ''} ${TYPE_META[q.type]?.label || q.type}</span>
+              <div class="actions">
+                <button class="btn btn-secondary edit-btn">✎ Edit</button>
+                <button class="btn btn-bad del-btn">Hapus</button>
+              </div>
+            </div>
+            <div class="q-card-body preview-body">${renderPreview(q)}</div>
+          </div>`).join('');
+        return `
+          <div class="stage-section">
+            <div class="stage-header">
+              <span class="stage-icon">${stage.icon}</span>
+              <span class="stage-name">${stage.label}</span>
+              <span class="stage-count">${items.length} soal</span>
+              <button class="btn stage-add" data-stage="${stage.key}">+ Tambah</button>
+            </div>
+            ${cards || '<div class="muted" style="padding: 8px 14px; font-size: 13px;">Belum ada soal di tahap ini.</div>'}
+          </div>`;
+      }).join('');
+
+      // Wire edit
+      list.querySelectorAll('.q-card').forEach(card => {
+        const id = card.dataset.id;
+        const q = questions.find(x => String(x.id) === id);
+
+        card.querySelector('.edit-btn').addEventListener('click', () => openEdit(card, q));
+        card.querySelector('.del-btn').addEventListener('click', async () => {
+          if (!confirm(`Hapus soal "${(q.payload.title || q.payload.question || q.payload.statement || q.payload.prompt || q.payload.template || '').slice(0, 50)}…" ?`)) return;
+          await API.del('/api/admin/questions/' + id);
+          loadQuestions();
+        });
+      });
+
+      // Wire "+ Tambah" per stage
+      list.querySelectorAll('.stage-add').forEach(btn => {
+        btn.addEventListener('click', () => openNewQuestionModal(btn.dataset.stage));
+      });
+    }
+
+    function openEdit(card, q) {
+      card.classList.add('editing');
+      const previewBody = card.querySelector('.preview-body');
+      previewBody.innerHTML = `
+        <div class="q-edit-form">
+          ${renderForm(q)}
+          <details class="json-advanced">
+            <summary>Lihat / edit JSON mentah (lanjutan)</summary>
+            <pre>${escapeHtml(JSON.stringify(q.payload, null, 2))}</pre>
+          </details>
+          <div class="form-actions">
+            <button class="btn btn-secondary cancel-btn">Batal</button>
+            <button class="btn save-btn">💾 Simpan</button>
+          </div>
+        </div>`;
+      const form = previewBody.querySelector('.q-edit-form');
+      wireFormEvents(form, q);
+
+      form.querySelector('.cancel-btn').addEventListener('click', () => loadQuestions());
+      form.querySelector('.save-btn').addEventListener('click', async () => {
+        const payload = readForm(form, q.type);
+        const err = validatePayload(q.type, payload);
+        if (err) { alert(err); return; }
+        try {
+          await API.put('/api/admin/questions/' + q.id, { payload });
+          loadQuestions();
+        } catch (e) { alert('Gagal simpan: ' + e.message); }
+      });
+    }
+
+    function openNewQuestionModal(forStage) {
+      const simKey = document.getElementById('q-sim').value;
+      const typesForStage = Object.entries(TYPE_META).filter(([k, m]) => m.stage === forStage);
+
+      const modal = document.createElement('div');
+      modal.className = 'new-q-modal';
+      modal.innerHTML = `
+        <div class="modal-card">
+          <h3>Tambah Soal — ${STAGE_META.find(s => s.key === forStage).label}</h3>
+          <p class="muted" style="font-size:13px;">Pilih jenis soal:</p>
+          <div class="type-grid">
+            ${typesForStage.map(([k, m]) => `
+              <button data-type="${k}">
+                <span class="t-icon">${m.icon}</span>
+                <span class="t-label">${m.label}</span>
+                <span class="t-stage">${STAGE_META.find(s => s.key === m.stage).label}</span>
+              </button>`).join('')}
+          </div>
+          <div style="display:flex;justify-content:flex-end;">
+            <button class="btn btn-secondary close-modal">Batal</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+
+      modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
+      modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+      modal.querySelectorAll('.type-grid button').forEach(b => {
+        b.addEventListener('click', async () => {
+          const type = b.dataset.type;
+          modal.remove();
+          // Create immediately with default payload then open editor
+          const r = await API.post('/api/admin/questions', {
+            sim_key: simKey,
+            stage: forStage,
+            type,
+            order_index: 999,
+            payload: defaultPayload(type)
+          });
+          await loadQuestions();
+          // Open the newly created one
+          const newCard = document.querySelector(`.q-card[data-id="${r.id}"]`);
+          if (newCard) {
+            const q = { id: r.id, sim_key: simKey, stage: forStage, type, order_index: 999, payload: defaultPayload(type) };
+            openEdit(newCard, q);
+            newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
     }
 
     async function loadResponses() {
@@ -301,9 +763,6 @@
       document.getElementById('summary-table').innerHTML = html;
     }
 
-    function escapeHtml(s) {
-      return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    }
     checkAuth();
   </script>
 </body>

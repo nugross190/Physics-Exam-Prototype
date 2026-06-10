@@ -138,6 +138,16 @@ router.post('/questions/reorder', (req, res) => {
 const listSims = db.prepare(`SELECT sim_key, title, order_index, embed_path FROM sims ORDER BY order_index`);
 router.get('/sims', (req, res) => res.json({ sims: listSims.all() }));
 
+// Admin preview: load a sim + its questions without student gating or response recording.
+const getSimByKey = db.prepare(`SELECT sim_key, title, embed_path FROM sims WHERE sim_key = ?`);
+const getSimQuestions = db.prepare(`SELECT id, sim_key, stage, type, order_index, payload FROM questions WHERE sim_key = ? ORDER BY order_index, id`);
+router.get('/sim/:simKey/preview', (req, res) => {
+  const sim = getSimByKey.get(req.params.simKey);
+  if (!sim) return res.status(404).json({ error: 'Sim tidak ditemukan' });
+  const questions = getSimQuestions.all(req.params.simKey).map(parseQ);
+  res.json({ sim, questions, responses: [] });
+});
+
 // ── Responses ────────────────────────────────────────────────────────────
 const responsesJoinSql = `
   SELECT r.id, r.submitted_at, r.sim_key, r.stage, r.is_correct, r.answer,

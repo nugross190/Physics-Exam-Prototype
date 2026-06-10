@@ -18,14 +18,22 @@
     responses: {},   // question_id → { answer, is_correct }
     cursor: 0,       // index into questions
     open: true,
-    startTs: 0
+    startTs: 0,
+    previewMode: false
   };
 
   let root, panel, fab;
 
-  async function init(simKey) {
+  async function init(simKey, options) {
     state.simKey = simKey;
-    const data = await API.get(`/api/quest/sim/${encodeURIComponent(simKey)}`);
+    state.previewMode = !!(options && options.previewMode);
+
+    let data;
+    if (state.previewMode && options.previewData) {
+      data = options.previewData;
+    } else {
+      data = await API.get(`/api/quest/sim/${encodeURIComponent(simKey)}`);
+    }
     state.title = data.sim.title;
     state.questions = data.questions; // server returns ORDER BY order_index, id
     for (const r of data.responses || []) state.responses[r.question_id] = r;
@@ -44,10 +52,13 @@
 
     const fabHtml = `<button id="quiz-fab" title="Buka Quiz">📝<span class="badge" id="quiz-fab-badge"></span></button>`;
 
+    const previewBadge = state.previewMode
+      ? `<span style="background:#f59e0b;color:#78350f;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px;">PREVIEW</span>`
+      : '';
     const panelHtml = `
       <div id="quiz-panel">
         <div class="qp-header" id="qp-header">
-          <div class="qp-title">📝 <span id="qp-sim-title"></span></div>
+          <div class="qp-title">📝 <span id="qp-sim-title"></span>${previewBadge}</div>
           <div class="qp-actions">
             ${split ? '' : '<button id="qp-min" title="Minimize">–</button>'}
           </div>
@@ -333,6 +344,11 @@
       alert('Jawaban belum diisi.');
       return false;
     }
+    if (state.previewMode) {
+      // Don't record in preview — just store locally so navigation works.
+      state.responses[q.id] = { answer: ans, is_correct: null };
+      return true;
+    }
     const time_spent = Date.now() - (state.startTs || Date.now());
     const r = await API.post('/api/quest/response', { question_id: q.id, answer: ans, time_spent_ms: time_spent });
     state.responses[q.id] = { answer: ans, is_correct: r.is_correct };
@@ -362,9 +378,20 @@
   }
 
   async function tryComplete() {
+    const body = document.getElementById('qp-body');
+    if (state.previewMode) {
+      body.innerHTML = `
+        <div class="feedback info"><strong>Preview selesai.</strong></div>
+        <p>Semua soal sudah dicoba. Jawaban tidak direkam karena ini adalah mode preview admin.</p>
+        <button class="qp-btn secondary" onclick="window.close()">Tutup Tab</button>
+        <button class="qp-btn" onclick="window.location.href='/admin.html'">Kembali ke Admin</button>
+      `;
+      renderDots();
+      updateBadge();
+      return;
+    }
     try {
       const r = await API.post(`/api/quest/sim/${encodeURIComponent(state.simKey)}/complete`, {});
-      const body = document.getElementById('qp-body');
       body.innerHTML = `
         <div class="feedback ok"><strong>✓ Simulasi selesai!</strong></div>
         <p>Semua soal telah dijawab. ${r.next_sim ? 'Simulasi berikutnya sudah terbuka.' : 'Kamu telah menyelesaikan seluruh rangkaian ujian!'}</p>

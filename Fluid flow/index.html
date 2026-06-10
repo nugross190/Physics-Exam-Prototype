@@ -38,6 +38,56 @@
                 </div>
             </section>
 
+            <!-- Controls Section -->
+            <section class="controls-container" aria-label="Simulation Controls">
+                <div class="controls-header">
+                    <h2>Flow Controls</h2>
+                    <span class="controls-hint">Select presets to reshape the system</span>
+                </div>
+                <div class="controls-grid">
+                    <div class="control-group" data-param="A1">
+                        <span class="control-label">Inlet Area (A₁)</span>
+                        <div class="btn-row">
+                            <button class="preset-btn" data-value="50">50 cm²</button>
+                            <button class="preset-btn active" data-value="80">80 cm²</button>
+                            <button class="preset-btn" data-value="100">100 cm²</button>
+                        </div>
+                    </div>
+                    <div class="control-group" data-param="A2">
+                        <span class="control-label">Throat Area (A₂)</span>
+                        <div class="btn-row">
+                            <button class="preset-btn" data-value="10">10 cm²</button>
+                            <button class="preset-btn active" data-value="20">20 cm²</button>
+                            <button class="preset-btn" data-value="40">40 cm²</button>
+                        </div>
+                    </div>
+                    <div class="control-group" data-param="A3">
+                        <span class="control-label">Outlet Area (A₃)</span>
+                        <div class="btn-row">
+                            <button class="preset-btn" data-value="30">30 cm²</button>
+                            <button class="preset-btn active" data-value="50">50 cm²</button>
+                            <button class="preset-btn" data-value="80">80 cm²</button>
+                        </div>
+                    </div>
+                    <div class="control-group" data-param="P1">
+                        <span class="control-label">Source Pressure (P₁)</span>
+                        <div class="btn-row">
+                            <button class="preset-btn" data-value="100">100 kPa</button>
+                            <button class="preset-btn active" data-value="200">200 kPa</button>
+                            <button class="preset-btn" data-value="300">300 kPa</button>
+                        </div>
+                    </div>
+                    <div class="control-group" data-param="dh">
+                        <span class="control-label">Outlet Height (Δh)</span>
+                        <div class="btn-row">
+                            <button class="preset-btn active" data-value="0">0 m</button>
+                            <button class="preset-btn" data-value="1.5">1.5 m</button>
+                            <button class="preset-btn" data-value="3">3 m</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Readout Section -->
             <section class="readout-container" aria-label="Measurement Probe Readout">
                 <div class="readout-header">
@@ -54,13 +104,13 @@
                             <p class="card-label">CURRENT POSITION</p>
                         </div>
                     </div>
-                    <!-- Diameter Card -->
-                    <div class="readout-card" id="card-diameter">
-                        <div class="card-icon">⌀</div>
+                    <!-- Area Card -->
+                    <div class="readout-card" id="card-area">
+                        <div class="card-icon">▣</div>
                         <div class="card-body">
-                            <h3>Diameter</h3>
-                            <div class="card-value" id="val-diameter">--</div>
-                            <p class="card-label">PIPE APERTURE</p>
+                            <h3>Area</h3>
+                            <div class="card-value" id="val-area">--</div>
+                            <p class="card-label">CROSS-SECTIONAL AREA</p>
                         </div>
                     </div>
                     <!-- Velocity Card -->
@@ -79,6 +129,15 @@
                             <h3>Pressure</h3>
                             <div class="card-value" id="val-pressure">--</div>
                             <p class="card-label">HYDROSTATIC PRESSURE</p>
+                        </div>
+                    </div>
+                    <!-- Height Card -->
+                    <div class="readout-card" id="card-height">
+                        <div class="card-icon">⇡</div>
+                        <div class="card-body">
+                            <h3>Height</h3>
+                            <div class="card-value" id="val-height">--</div>
+                            <p class="card-label">ELEVATION</p>
                         </div>
                     </div>
                 </div>
@@ -100,11 +159,11 @@
                         </div>
                         <div class="preset-item">
                             <span class="p-label">Inlet Pressure (P₁)</span>
-                            <span class="p-val">200 kPa</span>
+                            <span class="p-val" id="preset-p1">200 kPa</span>
                         </div>
                         <div class="preset-item">
-                            <span class="p-label">Elevation (h)</span>
-                            <span class="p-val">Constant (0m)</span>
+                            <span class="p-label">Elevation (Δh)</span>
+                            <span class="p-val" id="preset-h">0 m (level)</span>
                         </div>
                     </div>
                 </div>
@@ -119,8 +178,8 @@
                 <!-- Equation: Bernoulli -->
                 <div class="info-card math-card">
                     <h3>Bernoulli's Principle</h3>
-                    <p class="formula">P + ½ρv² = constant</p>
-                    <p class="math-desc">As the velocity of a fluid increases, the static pressure decreases, keeping the total mechanical energy constant along a streamline.</p>
+                    <p class="formula">P + ½ρv² + ρgh = constant</p>
+                    <p class="math-desc">As the velocity of a fluid increases, or as the fluid climbs to a higher elevation, the static pressure decreases, keeping the total mechanical energy constant along a streamline.</p>
                 </div>
             </section>
         </main>

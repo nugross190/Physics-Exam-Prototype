@@ -29,13 +29,13 @@ const listSims = db.prepare(`SELECT sim_key, title, order_index, embed_path FROM
 const getSession = db.prepare(`SELECT completed_sims, current_sim, current_stage FROM sessions WHERE id = ?`);
 const getSim = db.prepare(`SELECT sim_key, title, embed_path FROM sims WHERE sim_key = ?`);
 const listQuestions = db.prepare(`SELECT id, stage, type, order_index, payload FROM questions WHERE sim_key = ? ORDER BY order_index ASC, id ASC`);
-const listResponses = db.prepare(`SELECT question_id, answer, is_correct FROM responses WHERE session_id = ? AND sim_key = ?`);
+const listResponses = db.prepare(`SELECT question_id, answer, is_correct, score FROM responses WHERE session_id = ? AND sim_key = ?`);
 const getQuestion = db.prepare(`SELECT id, sim_key, stage, type, payload FROM questions WHERE id = ?`);
 const upsertResponse = db.prepare(`
-  INSERT INTO responses (session_id, student_id, question_id, sim_key, stage, answer, is_correct, time_spent_ms)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO responses (session_id, student_id, question_id, sim_key, stage, answer, is_correct, score, time_spent_ms)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(session_id, question_id) DO UPDATE
-    SET answer=excluded.answer, is_correct=excluded.is_correct,
+    SET answer=excluded.answer, is_correct=excluded.is_correct, score=excluded.score,
         time_spent_ms=excluded.time_spent_ms, submitted_at=datetime('now')
 `);
 const updateCursor = db.prepare(`UPDATE sessions SET last_seen_at=datetime('now'), current_sim=?, current_stage=? WHERE id=?`);
@@ -126,7 +126,8 @@ router.get('/sim/:simKey', (req, res) => {
   const resp = listResponses.all(sid, simKey).map(r => ({
     question_id: r.question_id,
     answer: JSON.parse(r.answer),
-    is_correct: r.is_correct === null ? null : !!r.is_correct
+    is_correct: r.is_correct === null ? null : !!r.is_correct,
+    score: r.score
   }));
 
   res.json({
@@ -151,13 +152,13 @@ router.post('/response', (req, res) => {
   if (!row) return res.status(404).json({ error: 'Soal tidak ditemukan' });
   const q = { id: row.id, sim_key: row.sim_key, stage: row.stage, type: row.type, payload: JSON.parse(row.payload) };
 
-  const { isCorrect, normalized } = gradeAnswer(q, answer);
+  const { isCorrect, score, normalized } = gradeAnswer(q, answer);
   const correctVal = isCorrect === null ? null : (isCorrect ? 1 : 0);
 
-  upsertResponse.run(sid, studentId, q.id, q.sim_key, q.stage, JSON.stringify(normalized), correctVal, time_spent_ms || null);
+  upsertResponse.run(sid, studentId, q.id, q.sim_key, q.stage, JSON.stringify(normalized), correctVal, score ?? null, time_spent_ms || null);
   updateCursor.run(q.sim_key, q.stage, sid);
 
-  res.json({ ok: true, is_correct: isCorrect });
+  res.json({ ok: true, is_correct: isCorrect, score });
 });
 
 router.post('/sim/:simKey/complete', (req, res) => {

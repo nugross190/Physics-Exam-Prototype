@@ -842,13 +842,14 @@
     async function loadResponses() {
       const { responses } = await API.get('/api/admin/responses');
       const html = `
-        <table><thead><tr><th>Waktu</th><th>NIS</th><th>Nama</th><th>Kelas</th><th>Sim</th><th>Tahap</th><th>Tipe</th><th>Benar?</th><th>Jawaban</th></tr></thead><tbody>
+        <table><thead><tr><th>Waktu</th><th>NIS</th><th>Nama</th><th>Kelas</th><th>Sim</th><th>Tahap</th><th>Tipe</th><th>Benar?</th><th>Skor</th><th>Jawaban</th></tr></thead><tbody>
         ${responses.map(r => `
           <tr>
             <td style="font-size:11px;">${new Date(r.submitted_at).toLocaleString('id-ID')}</td>
             <td>${r.nis}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.class_name||'')}</td>
             <td>${r.sim_key}</td><td>${r.stage}</td><td>${r.type}</td>
             <td>${r.is_correct === true ? '<span class="tag ok">✓</span>' : r.is_correct === false ? '<span class="tag no">✗</span>' : '<span class="tag mid">—</span>'}</td>
+            <td>${r.score !== null && r.score !== undefined ? r.score : '<span class="tag mid">—</span>'}</td>
             <td style="font-size:11px;">${escapeHtml(JSON.stringify(r.answer))}</td>
           </tr>`).join('')}
         </tbody></table>
@@ -859,8 +860,8 @@
     async function loadSummary() {
       const { students } = await API.get('/api/admin/summary');
       const html = `
-        <table><thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Sim Selesai</th><th>Total Jawaban</th><th>Benar</th></tr></thead><tbody>
-        ${students.map(s => `<tr><td>${s.nis}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.class_name||'')}</td><td>${s.sims_completed}/6</td><td>${s.answers}</td><td>${s.correct}</td></tr>`).join('')}
+        <table><thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Sim Selesai</th><th>Total Jawaban</th><th>Benar (Biner)</th><th>Total Skor</th></tr></thead><tbody>
+        ${students.map(s => `<tr><td>${s.nis}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.class_name||'')}</td><td>${s.sims_completed}/6</td><td>${s.answers}</td><td>${s.correct}</td><td>${s.total_score}</td></tr>`).join('')}
         </tbody></table>
       `;
       document.getElementById('summary-table').innerHTML = html;

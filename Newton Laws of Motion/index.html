@@ -12,7 +12,7 @@
 
 <body>
   <!-- HUD Data -->
-  <div class="hud">
+  <div class="hud" data-tut-id="hud">
     <div class="hud-item"><span>Waktu:</span> <strong id="val-time">0.0</strong> <span class="unit">s</span></div>
     <div class="hud-item"><span>Posisi (x,y):</span> <strong id="val-pos">0.0, 0.0</strong> <span class="unit">m</span>
     </div>
@@ -25,7 +25,7 @@
 
   <!-- Settings Panel - Always Visible Top Bar -->
   <div id="settingsPanel" class="settings-panel-top">
-    <div class="setting-group">
+    <div class="setting-group" data-tut-id="mass-slider">
       <h4>Objek</h4>
       <div class="slider-row">
         <label>Massa</label>
@@ -37,7 +37,7 @@
 
     <div class="panel-divider"></div>
 
-    <div class="setting-group force-group">
+    <div class="setting-group force-group" data-tut-id="force-panel">
       <h4>Gaya</h4>
       <div class="force-grid">
         <div class="slider-row">
@@ -88,11 +88,11 @@
 
     <div class="panel-divider"></div>
 
-    <button id="resetSimBtn" class="reset-btn"><i class="ph ph-arrow-counter-clockwise"></i> Reset</button>
+    <button id="resetSimBtn" class="reset-btn" data-tut-id="reset-btn"><i class="ph ph-arrow-counter-clockwise"></i> Reset</button>
   </div>
 
   <!-- Bottom Playback Bar -->
-  <div class="playback-bar">
+  <div class="playback-bar" data-tut-id="playback">
     <button id="playPauseBtn" class="icon-btn main-play-btn"><i class="ph ph-pause"></i></button>
     <div class="timeline-container">
       <input type="range" id="timeline" min="0" max="100" value="100" step="1">

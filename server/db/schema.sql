@@ -27,8 +27,8 @@ CREATE TABLE IF NOT EXISTS sims (
   embed_path   TEXT NOT NULL
 );
 
--- stage ∈ ('tutorial','var_test','inquiry','true_false','conclusion')
--- type  ∈ ('tutorial_step','var_test','simple_mc','complex_mc','true_false','word_bank')
+-- stage ∈ ('tutorial','var_test','inquiry','true_false','conclusion')  — metadata only (no gating)
+-- type  ∈ ('tutorial_step','var_test','simple_mc','complex_mc','table_mc','true_false','word_bank')
 CREATE TABLE IF NOT EXISTS questions (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   sim_key      TEXT NOT NULL REFERENCES sims(sim_key) ON DELETE CASCADE,

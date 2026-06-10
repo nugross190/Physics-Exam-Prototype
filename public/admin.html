@@ -521,7 +521,13 @@
             <div class="field"><label class="field-label">Judul</label>
               <input class="input" data-field="title" value="${escapeHtml(p.title || '')}" /></div>
             <div class="field"><label class="field-label">Isi penjelasan</label>
-              <textarea class="input" data-field="body" rows="4">${escapeHtml(p.body || '')}</textarea></div>`;
+              <textarea class="input" data-field="body" rows="4">${escapeHtml(p.body || '')}</textarea></div>
+            <div class="field"><label class="field-label">Prompt aksi (opsional — siswa harus klik "Saya sudah mencoba" sebelum lanjut)</label>
+              <input class="input" data-field="action_prompt" value="${escapeHtml(p.action_prompt || '')}" placeholder="Contoh: Coba geser slider Massa." /></div>
+            <div class="field"><label class="field-label">Selector highlight (opsional — hanya sim buatan sendiri, mis. [data-tut-id=&quot;mass-slider&quot;])</label>
+              <input class="input" data-field="highlight_selector" value="${escapeHtml((p.highlight && p.highlight.selector) || '')}" /></div>
+            <div class="field"><label class="field-label">URL gambar anotasi (opsional — untuk sim PhET)</label>
+              <input class="input" data-field="image" value="${escapeHtml(p.image || '')}" placeholder="/assets/tutorials/energy/01-friction.png" /></div>`;
 
         case 'var_test':
           return `
@@ -655,7 +661,18 @@
       const getList = (listName) => Array.from(rowEl.querySelectorAll(`[data-list="${listName}"] .option-row .opt-text`)).map(i => i.value);
 
       switch (type) {
-        case 'tutorial_step': return { title: get('title'), body: get('body') };
+        case 'tutorial_step': {
+          // Empty values are returned (not omitted) so clearing a field
+          // overrides the old value when merged over the original payload.
+          const sel = get('highlight_selector').trim();
+          return {
+            title: get('title'),
+            body: get('body'),
+            action_prompt: get('action_prompt').trim(),
+            image: get('image').trim(),
+            highlight: sel ? { selector: sel } : null
+          };
+        }
         case 'var_test':      return { prompt: get('prompt'), hint: get('hint') };
         case 'simple_mc': {
           const options = getList('options');
@@ -892,7 +909,9 @@
 
       form.querySelector('.cancel-btn').addEventListener('click', () => loadQuestions());
       form.querySelector('.save-btn').addEventListener('click', async () => {
-        const payload = readForm(form, q.type);
+        // Merge over the original payload so keys the form doesn't know about
+        // (e.g. the trap flag, tutorial highlight selectors) are preserved.
+        const payload = Object.assign({}, q.payload, readForm(form, q.type));
         const err = validatePayload(q.type, payload);
         if (err) { alert(err); return; }
         try {

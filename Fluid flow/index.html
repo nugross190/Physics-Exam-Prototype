@@ -33,13 +33,13 @@
                     </span>
                     <span class="canvas-title">Venturi Tube Flow Profile</span>
                 </div>
-                <div class="canvas-wrapper">
+                <div class="canvas-wrapper" data-tut-id="probe-canvas">
                     <canvas id="simCanvas" width="900" height="400"></canvas>
                 </div>
             </section>
 
             <!-- Controls Section -->
-            <section class="controls-container" aria-label="Simulation Controls">
+            <section class="controls-container" aria-label="Simulation Controls" data-tut-id="controls">
                 <div class="controls-header">
                     <h2>Flow Controls</h2>
                     <span class="controls-hint">Select presets to reshape the system</span>
@@ -89,7 +89,7 @@
             </section>
 
             <!-- Readout Section -->
-            <section class="readout-container" aria-label="Measurement Probe Readout">
+            <section class="readout-container" aria-label="Measurement Probe Readout" data-tut-id="readout">
                 <div class="readout-header">
                     <h2>Probe Measurements</h2>
                     <span id="probe-status" class="probe-inactive">Awaiting Probe Input...</span>

@@ -24,4 +24,7 @@ db.exec(`
 db.prepare(`INSERT OR IGNORE INTO settings (key, value) VALUES ('test_mode', 'false')`).run();
 db.prepare(`INSERT OR IGNORE INTO settings (key, value) VALUES ('exam_unlock_at', '2026-06-11T11:00:00')`).run();
 
+// Migration: add score column to responses if it doesn't exist yet
+try { db.exec(`ALTER TABLE responses ADD COLUMN score REAL`); } catch {}
+
 module.exports = db;

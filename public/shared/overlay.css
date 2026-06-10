@@ -225,6 +225,30 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
 #quiz-panel .wb-word:hover { background: #cbd5e1; }
 #quiz-panel .wb-word.used { opacity: .35; pointer-events: none; }
 
+/* Table MC */
+#quiz-panel .tmc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+#quiz-panel .tmc-table th,
+#quiz-panel .tmc-table td {
+  border: 1px solid #e2e8f0;
+  padding: 8px 10px;
+  text-align: center;
+}
+#quiz-panel .tmc-table th:first-child,
+#quiz-panel .tmc-table td:first-child {
+  text-align: left;
+  font-weight: 600;
+  background: #f8fafc;
+}
+#quiz-panel .tmc-table thead th { background: #f1f5f9; font-weight: 700; }
+#quiz-panel .tmc-table td.tmc-sel { background: #dbeafe; }
+#quiz-panel .tmc-table label { cursor: pointer; display: block; padding: 2px; }
+#quiz-panel .tmc-table input[type="radio"] { cursor: pointer; width: 16px; height: 16px; }
+
 /* Feedback banners */
 #quiz-panel .feedback { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; }
 #quiz-panel .feedback.ok   { background: #dcfce7; color: #166534; }

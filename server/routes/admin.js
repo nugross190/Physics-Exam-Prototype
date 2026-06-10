@@ -176,7 +176,7 @@ router.get('/sim/:simKey/preview', (req, res) => {
 
 // ── Responses ────────────────────────────────────────────────────────────
 const responsesJoinSql = `
-  SELECT r.id, r.submitted_at, r.sim_key, r.stage, r.is_correct, r.answer,
+  SELECT r.id, r.submitted_at, r.sim_key, r.stage, r.is_correct, r.score, r.answer,
          s.nis, s.examinee_no, s.name, s.class_name, q.type, q.payload, r.time_spent_ms
   FROM responses r
   JOIN students s ON s.id = r.student_id
@@ -196,6 +196,7 @@ router.get('/responses', (req, res) => {
   res.json({ responses: rows });
 });
 
+
 router.get('/responses.csv', (req, res) => {
   const rows = listResponsesAll.all();
   const esc = (v) => {
@@ -203,13 +204,14 @@ router.get('/responses.csv', (req, res) => {
     const str = String(v).replace(/"/g, '""');
     return /[",\n]/.test(str) ? `"${str}"` : str;
   };
-  const headers = ['nis','examinee_no','name','class_name','sim_key','stage','type','is_correct','answer_json','time_spent_ms','submitted_at'];
+  const headers = ['nis','examinee_no','name','class_name','sim_key','stage','type','is_correct','score','answer_json','time_spent_ms','submitted_at'];
   const lines = [headers.join(',')];
   for (const r of rows) {
     lines.push([
       esc(r.nis), esc(r.examinee_no), esc(r.name), esc(r.class_name),
       esc(r.sim_key), esc(r.stage), esc(r.type),
       esc(r.is_correct === null ? '' : (r.is_correct ? 'true' : 'false')),
+      esc(r.score === null || r.score === undefined ? '' : r.score),
       esc(r.answer), esc(r.time_spent_ms), esc(r.submitted_at)
     ].join(','));
   }
@@ -222,7 +224,8 @@ const summaryStmt = db.prepare(`
   SELECT s.id, s.nis, s.name, s.class_name,
          (SELECT completed_sims FROM sessions WHERE student_id = s.id) AS completed_sims,
          (SELECT COUNT(*) FROM responses WHERE student_id=s.id) AS answers,
-         (SELECT COUNT(*) FROM responses WHERE student_id=s.id AND is_correct=1) AS correct
+         (SELECT COUNT(*) FROM responses WHERE student_id=s.id AND is_correct=1) AS correct,
+         (SELECT COALESCE(SUM(score), 0) FROM responses WHERE student_id=s.id) AS total_score
   FROM students s
   ORDER BY s.class_name, s.name
 `);
@@ -230,7 +233,7 @@ router.get('/summary', (req, res) => {
   const rows = summaryStmt.all().map(r => {
     let n = 0;
     try { n = JSON.parse(r.completed_sims || '[]').length; } catch {}
-    return { id: r.id, nis: r.nis, name: r.name, class_name: r.class_name, sims_completed: n, answers: r.answers, correct: r.correct };
+    return { id: r.id, nis: r.nis, name: r.name, class_name: r.class_name, sims_completed: n, answers: r.answers, correct: r.correct, total_score: r.total_score };
   });
   res.json({ students: rows });
 });

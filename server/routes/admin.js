@@ -82,6 +82,32 @@ router.post('/responses/reset-all', (req, res) => {
   res.json({ ok: true, deleted });
 });
 
+// ── Settings ─────────────────────────────────────────────────────────────
+const getSetting = db.prepare(`SELECT value FROM settings WHERE key = ?`);
+const setSetting = db.prepare(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`);
+
+router.get('/settings', (req, res) => {
+  const tm = getSetting.get('test_mode');
+  const eu = getSetting.get('exam_unlock_at');
+  res.json({
+    test_mode: tm ? tm.value === 'true' : false,
+    exam_unlock_at: (eu && eu.value) ? eu.value : null
+  });
+});
+
+router.post('/settings/test-mode', (req, res) => {
+  const { enabled } = req.body || {};
+  setSetting.run('test_mode', enabled ? 'true' : 'false');
+  res.json({ ok: true, test_mode: !!enabled });
+});
+
+router.post('/settings/exam-unlock', (req, res) => {
+  const { unlock_at } = req.body || {};
+  // unlock_at: ISO datetime string, or null/empty to remove the lock
+  setSetting.run('exam_unlock_at', unlock_at ? String(unlock_at).trim() : '');
+  res.json({ ok: true, exam_unlock_at: unlock_at || null });
+});
+
 // ── Questions ────────────────────────────────────────────────────────────
 const listQuestionsBySim = db.prepare(`SELECT id, sim_key, stage, type, order_index, payload FROM questions WHERE sim_key = ? ORDER BY order_index, id`);
 const listAllQuestions = db.prepare(`SELECT id, sim_key, stage, type, order_index, payload FROM questions ORDER BY sim_key, order_index, id`);

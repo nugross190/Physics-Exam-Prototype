@@ -123,6 +123,18 @@ router.delete('/questions/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// Persist a new question order: body { ids: [questionId, ...] } in desired order.
+const setOrder = db.prepare(`UPDATE questions SET order_index = ?, updated_at = datetime('now') WHERE id = ?`);
+router.post('/questions/reorder', (req, res) => {
+  const { ids } = req.body || {};
+  if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids wajib' });
+  const txn = db.transaction(() => {
+    ids.forEach((id, i) => setOrder.run(i, id));
+  });
+  txn();
+  res.json({ ok: true });
+});
+
 const listSims = db.prepare(`SELECT sim_key, title, order_index, embed_path FROM sims ORDER BY order_index`);
 router.get('/sims', (req, res) => res.json({ sims: listSims.all() }));
 

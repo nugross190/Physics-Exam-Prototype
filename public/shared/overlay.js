@@ -1,25 +1,23 @@
-// Floating quiz overlay. Renders stages: tutorial → var_test → inquiry → true_false → conclusion.
-// Talks to /api/quest/* endpoints via window.API.
+// Quiz overlay: one flat list of questions per sim, any type in any order
+// (like a single Google Form). Talks to /api/quest/* endpoints via window.API.
 
 (function () {
-  const STAGES = ['tutorial', 'var_test', 'inquiry', 'true_false', 'conclusion'];
-  const STAGE_LABEL = {
-    tutorial: 'Tutorial',
+  const TYPE_LABEL = {
+    tutorial_step: 'Tutorial',
     var_test: 'Uji Variabel',
-    inquiry: 'Inkuiri',
+    simple_mc: 'Pilihan Ganda',
+    complex_mc: 'PG Kompleks',
     true_false: 'Benar/Salah',
-    conclusion: 'Kesimpulan'
+    word_bank: 'Bank Kata'
   };
 
   const state = {
     simKey: null,
     title: '',
-    questions: [],
-    responses: {}, // question_id → { answer, is_correct }
-    currentStage: 'tutorial',
-    cursor: 0,
+    questions: [],   // ordered flat list
+    responses: {},   // question_id → { answer, is_correct }
+    cursor: 0,       // index into questions
     open: true,
-    answeredNow: null,
     startTs: 0
   };
 
@@ -29,9 +27,8 @@
     state.simKey = simKey;
     const data = await API.get(`/api/quest/sim/${encodeURIComponent(simKey)}`);
     state.title = data.sim.title;
-    state.questions = data.questions;
+    state.questions = data.questions; // server returns ORDER BY order_index, id
     for (const r of data.responses || []) state.responses[r.question_id] = r;
-    state.currentStage = data.current_stage || 'tutorial';
     buildUi();
     jumpToFirstUnanswered();
     render();
@@ -45,7 +42,6 @@
   function buildUi() {
     const split = isSplitMode();
 
-    // FAB only needed in mobile/floating mode
     const fabHtml = `<button id="quiz-fab" title="Buka Quiz">📝<span class="badge" id="quiz-fab-badge"></span></button>`;
 
     const panelHtml = `
@@ -56,12 +52,12 @@
             ${split ? '' : '<button id="qp-min" title="Minimize">–</button>'}
           </div>
         </div>
-        <div class="qp-stages" id="qp-stages"></div>
+        <div class="qp-dots" id="qp-dots"></div>
         <div class="qp-body" id="qp-body"></div>
         <div class="qp-footer">
           <div class="progress" id="qp-progress"></div>
           <div class="btns">
-            <button class="qp-btn secondary" id="qp-prev">← Sebelumnya</button>
+            <button class="qp-btn secondary" id="qp-prev">←</button>
             <button class="qp-btn" id="qp-next">Lanjut →</button>
           </div>
         </div>
@@ -94,14 +90,12 @@
     if (!split) enableDrag();
     togglePanel(true);
 
-    // Re-evaluate on resize so crossing the breakpoint works
     window.addEventListener('resize', () => updateBadge());
   }
 
   function togglePanel(open) {
     state.open = open;
     if (isSplitMode()) {
-      // In split mode, toggling is handled by the topbar button collapsing the pane
       panel.classList.remove('hidden');
     } else {
       panel.classList.toggle('hidden', !open);
@@ -138,80 +132,59 @@
     window.addEventListener('mouseup', () => { dragging = false; });
   }
 
-  function questionsInStage(stage) {
-    return state.questions.filter(q => q.stage === stage);
-  }
-  function stageDone(stage) {
-    const qs = questionsInStage(stage);
-    return qs.length > 0 && qs.every(q => state.responses[q.id]);
-  }
   function currentQuestion() {
-    const qs = questionsInStage(state.currentStage);
-    return qs[state.cursor];
+    return state.questions[state.cursor];
   }
 
   function jumpToFirstUnanswered() {
-    for (const stage of STAGES) {
-      const qs = questionsInStage(stage);
-      for (let i = 0; i < qs.length; i++) {
-        if (!state.responses[qs[i].id]) {
-          state.currentStage = stage;
-          state.cursor = i;
-          state.startTs = Date.now();
-          return;
-        }
-      }
-    }
-    // All done — sit on conclusion last
-    state.currentStage = 'conclusion';
-    state.cursor = Math.max(0, questionsInStage('conclusion').length - 1);
+    const idx = state.questions.findIndex(q => !state.responses[q.id]);
+    state.cursor = idx >= 0 ? idx : Math.max(0, state.questions.length - 1);
+    state.startTs = Date.now();
   }
 
   function render() {
-    renderStages();
+    renderDots();
     renderBody();
     renderFooter();
     updateBadge();
   }
 
-  function renderStages() {
-    const el = document.getElementById('qp-stages');
-    el.innerHTML = STAGES.map(s => {
-      const qs = questionsInStage(s);
-      if (!qs.length) return '';
-      const done = stageDone(s);
-      const active = s === state.currentStage;
-      return `<div class="qp-stage-chip ${active ? 'active' : ''} ${done ? 'done' : ''}" data-stage="${s}">${STAGE_LABEL[s]}</div>`;
+  // Numbered dot per question: green = answered, blue ring = current, gray = todo.
+  function renderDots() {
+    const el = document.getElementById('qp-dots');
+    el.innerHTML = state.questions.map((q, i) => {
+      const answered = !!state.responses[q.id];
+      const current = i === state.cursor;
+      return `<button class="qp-dot ${answered ? 'done' : ''} ${current ? 'current' : ''}" data-i="${i}" title="Soal ${i+1}: ${TYPE_LABEL[q.type] || q.type}">${i + 1}</button>`;
     }).join('');
-    el.querySelectorAll('.qp-stage-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        const stage = chip.dataset.stage;
-        // Can only jump to stages that are done or current
-        if (stage === state.currentStage || stageDone(stage)) {
-          state.currentStage = stage;
-          state.cursor = 0;
-          state.answeredNow = null;
+    el.querySelectorAll('.qp-dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        const i = parseInt(dot.dataset.i, 10);
+        // Free navigation to any answered question or the first unanswered one.
+        const firstUnanswered = state.questions.findIndex(q => !state.responses[q.id]);
+        if (state.responses[state.questions[i].id] || i === firstUnanswered) {
+          state.cursor = i;
           state.startTs = Date.now();
           render();
         }
       });
     });
+    // Keep current dot visible
+    const cur = el.querySelector('.qp-dot.current');
+    if (cur) cur.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
   }
 
   function renderBody() {
     const body = document.getElementById('qp-body');
     const q = currentQuestion();
     if (!q) {
-      body.innerHTML = `<div class="feedback info">Tidak ada soal pada tahap ini.</div>`;
+      body.innerHTML = `<div class="feedback info">Belum ada soal untuk simulasi ini.</div>`;
       return;
     }
     state.startTs = state.startTs || Date.now();
     const existing = state.responses[q.id];
-    const stageLabel = STAGE_LABEL[q.stage];
-    const idx = questionsInStage(q.stage).findIndex(x => x.id === q.id);
-    const total = questionsInStage(q.stage).length;
 
-    let html = `<h3>${stageLabel} ${idx+1}/${total}</h3>`;
+    let html = `<h3>Soal ${state.cursor + 1}/${state.questions.length} · ${TYPE_LABEL[q.type] || q.type}</h3>`;
     const p = q.payload;
 
     if (q.type === 'tutorial_step') {
@@ -259,14 +232,13 @@
   }
 
   function renderWordBankTemplate(template) {
-    // template like "Hukum Newton II ... __1__ ... __2__ ..."
     return template.replace(/__([0-9]+)__/g, (m, n) => {
       return `<span class="wb-input" data-blank="${parseInt(n,10)-1}"></span>`;
     });
   }
 
   function wireBodyInteractions(q) {
-    if (q.type === 'simple_mc') {
+    if (q.type === 'simple_mc' || q.type === 'true_false') {
       document.querySelectorAll('.option').forEach(el => {
         el.addEventListener('click', () => {
           document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
@@ -286,15 +258,6 @@
         });
       });
     }
-    if (q.type === 'true_false') {
-      document.querySelectorAll('.option').forEach(el => {
-        el.addEventListener('click', () => {
-          document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
-          el.classList.add('selected');
-          el.querySelector('input').checked = true;
-        });
-      });
-    }
     if (q.type === 'word_bank') {
       let activeBlank = null;
       const inputs = document.querySelectorAll('.wb-input');
@@ -307,7 +270,6 @@
       words.forEach(w => w.addEventListener('click', () => {
         if (!activeBlank) activeBlank = inputs[0];
         if (!activeBlank) return;
-        // Free previously placed word in this blank
         const prev = activeBlank.textContent.trim();
         if (prev) {
           const prevWord = Array.from(words).find(x => x.dataset.w === prev && x.classList.contains('used'));
@@ -316,7 +278,6 @@
         activeBlank.textContent = w.dataset.w;
         activeBlank.classList.add('filled');
         w.classList.add('used');
-        // advance
         const arr = Array.from(inputs);
         const i = arr.indexOf(activeBlank);
         activeBlank = arr[i+1] || null;
@@ -385,33 +346,17 @@
       const ok = await submitCurrent();
       if (!ok) return;
     }
+    if (state.cursor >= state.questions.length - 1) {
+      await tryComplete();
+      return;
+    }
     move(1);
   }
 
-  async function move(delta) {
-    const qs = questionsInStage(state.currentStage);
-    let next = state.cursor + delta;
-    if (next >= qs.length) {
-      // advance stage
-      const i = STAGES.indexOf(state.currentStage);
-      const nextStage = STAGES.slice(i+1).find(s => questionsInStage(s).length > 0);
-      if (nextStage) {
-        state.currentStage = nextStage;
-        state.cursor = 0;
-      } else {
-        await tryComplete();
-        return;
-      }
-    } else if (next < 0) {
-      const i = STAGES.indexOf(state.currentStage);
-      const prevStage = STAGES.slice(0, i).reverse().find(s => questionsInStage(s).length > 0);
-      if (prevStage) {
-        state.currentStage = prevStage;
-        state.cursor = Math.max(0, questionsInStage(prevStage).length - 1);
-      } else { return; }
-    } else {
-      state.cursor = next;
-    }
+  function move(delta) {
+    const next = state.cursor + delta;
+    if (next < 0 || next >= state.questions.length) return;
+    state.cursor = next;
     state.startTs = Date.now();
     render();
   }
@@ -422,9 +367,11 @@
       const body = document.getElementById('qp-body');
       body.innerHTML = `
         <div class="feedback ok"><strong>✓ Simulasi selesai!</strong></div>
-        <p>Semua tahap telah dijawab. ${r.next_sim ? 'Simulasi berikutnya sudah terbuka.' : 'Kamu telah menyelesaikan seluruh rangkaian ujian!'}</p>
+        <p>Semua soal telah dijawab. ${r.next_sim ? 'Simulasi berikutnya sudah terbuka.' : 'Kamu telah menyelesaikan seluruh rangkaian ujian!'}</p>
         <button class="qp-btn" onclick="window.location.href='/dashboard.html'">Kembali ke Dashboard</button>
       `;
+      renderDots();
+      updateBadge();
     } catch (err) {
       alert('Belum bisa menyelesaikan: ' + err.message);
     }
@@ -433,12 +380,13 @@
   function renderFooter() {
     const total = state.questions.length;
     const done = Object.keys(state.responses).length;
-    document.getElementById('qp-progress').textContent = `${done}/${total} soal terjawab`;
+    document.getElementById('qp-progress').textContent = `${done}/${total} terjawab`;
     const q = currentQuestion();
     const nextBtn = document.getElementById('qp-next');
-    const lastStage = STAGES.slice().reverse().find(s => questionsInStage(s).length > 0);
-    const isLast = q && state.cursor === questionsInStage(state.currentStage).length - 1 && state.currentStage === lastStage;
-    nextBtn.textContent = isLast ? 'Selesai ✓' : (q && q.type === 'tutorial_step' ? 'Lanjut →' : (state.responses[q?.id] ? 'Lanjut →' : 'Jawab & Lanjut →'));
+    const isLast = state.cursor === total - 1;
+    nextBtn.textContent = isLast
+      ? 'Selesai ✓'
+      : (q && (q.type === 'tutorial_step' || state.responses[q.id]) ? 'Lanjut →' : 'Jawab & Lanjut →');
   }
 
   function escapeHtml(s) {

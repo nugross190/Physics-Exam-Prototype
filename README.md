@@ -1,7 +1,9 @@
 # Physics Exam Prototype
 
-Web platform for staged physics exams over PhET-style simulations.
-Students log in with NIS + examinee number, work through 6 simulations in fixed order, and answer questions in 5 stages per simulation: tutorial → variable testing → inquiry (MC + complex MC) → true/false → conclusion (word bank). Teachers manage students, questions, and view responses.
+Web platform for physics exams over PhET-style simulations.
+Students log in with NIS + examinee number and work through 6 simulations **in any order** — the dashboard shows per-sim and overall completion percentages instead of locking sims sequentially. Each sim starts with a short interactive tutorial (action prompts + live control highlights), followed by experiment-driven questions (table MC, complex MC, word bank, true/false). Questions can be **skipped** and revisited; the dashboard explicitly advises students to skip questions they don't understand. Teachers manage students, questions, and view responses.
+
+Each sim's question list also contains one **"trap" question** (payload flag `trap: true`, stripped before it reaches students): same topic, seamlessly worded, but far above the exam's difficulty — placed around ¾ of the list to observe whether students skip what they cannot solve.
 
 ## Tech stack
 
@@ -27,7 +29,7 @@ npm start
 
 The SQLite database file is created on first run at `./data/physics-exam.db` (configurable via `DATABASE_FILE`). Seed inserts: 6 sims, ~10 questions each, and an admin account from `.env`. Students are added via the admin panel CSV upload (sample: `scripts/sample-students.csv`).
 
-## Sim order (fixed)
+## Sims
 
 1. Hukum Newton tentang Gerak
 2. Energy Skate Park
@@ -36,7 +38,7 @@ The SQLite database file is created on first run at `./data/physics-exam.db` (co
 5. Aliran Fluida
 6. Gerak Rotasi
 
-A student can only enter sim N+1 after sim N is marked complete (all questions answered at least once). Progress is saved per question, so a student can close the browser and resume exactly where they left off.
+All sims are open from the start; the order above is only the display order. The student dashboard shows a progress bar per sim (answered/total questions) plus an overall percentage, and students can switch sims at any time. Progress is saved per question, so a student can close the browser and resume exactly where they left off.
 
 ## Project layout
 
@@ -68,16 +70,21 @@ Dockerfile, railway.json
 
 ## Question types
 
-Each question is `(sim_key, stage, type, order_index, payload)`. The seed file is authoritative; the admin panel can edit anything via JSON.
+Each question is `(sim_key, stage, type, order_index, payload)`. The seed file is authoritative (bump `QUESTIONS_VERSION` in `server/db/seed.js` to force-replace the bank on next boot — this cascades away responses to the old questions); the admin panel can edit anything via JSON. `stage` is analytics metadata only — the quiz renders one flat ordered list.
 
-| stage      | type           | payload keys                                    |
-|------------|----------------|-------------------------------------------------|
-| tutorial   | tutorial_step  | `title`, `body`                                 |
-| var_test   | var_test       | `prompt`, `hint`                                |
-| inquiry    | simple_mc      | `question`, `options[]`, `answer` (int)         |
-| inquiry    | complex_mc     | `question`, `options[]`, `answers[]` (int[])    |
-| true_false | true_false     | `statement`, `answer` (bool)                    |
-| conclusion | word_bank      | `template` ("...__1__..."), `bank[]`, `blanks[]`|
+| stage      | type           | payload keys                                                  |
+|------------|----------------|---------------------------------------------------------------|
+| tutorial   | tutorial_step  | `title`, `body`, + optional `action_prompt`, `highlight.selector`, `image`, `image_caption` |
+| var_test   | var_test       | `prompt`, `hint`                                              |
+| inquiry    | simple_mc      | `question`, `options[]`, `answer` (int)                       |
+| inquiry    | complex_mc     | `question`, `options[]`, `answers[]` (int[])                  |
+| inquiry    | table_mc       | `question`, `row_header`, `columns[]`, `rows[]` (`{label, answer}`) |
+| true_false | true_false     | `statement`, `answer` (bool)                                  |
+| conclusion | word_bank      | `template` ("...__1__..."), `bank[]`, `blanks[]`              |
+
+Any graded type may carry `trap: true` (hard "skip-detector" question); the flag is stripped from student payloads.
+
+Tutorial extras (see `docs/TUTORIAL_DESIGN.md`): `action_prompt` shows a "try it" task and gates the Lanjut button behind a "Saya sudah mencoba" confirmation; `highlight.selector` draws a live spotlight over a `[data-tut-id=...]` element inside self-built sims (Newton, Fluid flow, Rotational Motion); `image` + `image_caption` show an annotated screenshot for PhET sims (assets not yet captured — prompts are text-only for now).
 
 ## API surface
 

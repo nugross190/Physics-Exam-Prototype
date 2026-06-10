@@ -55,6 +55,4 @@ function gradeAnswer(question, answer) {
   }
 }
 
-const STAGES = ['tutorial', 'var_test', 'inquiry', 'true_false', 'conclusion'];
-
-module.exports = { gradeAnswer, STAGES };
+module.exports = { gradeAnswer };

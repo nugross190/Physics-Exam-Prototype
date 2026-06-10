@@ -1,5 +1,16 @@
 # Tutorial Stage — Design Draft
 
+> **Status (implemented as draft):** the extended `tutorial_step` schema below
+> (`action_prompt`, `highlight.selector`, `image`/`image_caption`) is rendered
+> by `public/shared/overlay.js`. Class-A sims (Newton, Fluid flow, Rotational
+> Motion) are tagged with `data-tut-id` and use live spotlight highlights.
+> Class-B PhET sims (Energy Skate Park, Buoyancy, Under Pressure) currently use
+> text + action prompts only — annotated screenshots (Approach B1) can be
+> dropped into `public/assets/tutorials/` later and referenced via `image`
+> without code changes. The "confirmation gate" option is implemented: when
+> `action_prompt` is set, the Lanjut button unlocks after the student clicks
+> "Saya sudah mencoba".
+
 ## Goal
 
 Replace the current "tutorial = text card" stage with an interactive, guided walkthrough that:

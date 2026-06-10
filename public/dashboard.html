@@ -17,8 +17,30 @@
   </div>
   <div class="container">
     <h1>Daftar Simulasi</h1>
-    <p class="muted" id="dash-desc">Selesaikan setiap simulasi secara berurutan. Setelah satu simulasi selesai, simulasi berikutnya akan terbuka.</p>
+    <p class="muted" id="dash-desc">Semua simulasi terbuka — kerjakan dengan urutan bebas. Progresmu tersimpan otomatis.</p>
     <div id="banner" class="banner ok" style="display:none;"></div>
+
+    <div class="card guide-card" id="guide">
+      <h2>Petunjuk</h2>
+      <ol class="guide-list">
+        <li>Klik salah satu simulasi di bawah untuk mulai. <strong>Semua simulasi terbuka</strong> — kamu bebas memilih urutan dan bisa berpindah simulasi kapan saja.</li>
+        <li>Setiap simulasi diawali <strong>tutorial singkat</strong> di panel samping. Ikuti petunjuknya sambil mencoba langsung pada simulasi.</li>
+        <li>Kerjakan soal sambil <strong>bereksperimen</strong> — banyak soal meminta kamu mengatur simulasi terlebih dahulu lalu mengamati hasilnya.</li>
+        <li>Jawaban <strong>tersimpan otomatis</strong> setiap kali kamu menekan "Jawab &amp; Lanjut". Kamu boleh menutup browser dan melanjutkan lagi nanti.</li>
+        <li>Gunakan titik nomor di atas panel soal untuk berpindah antar soal, atau tombol <strong>"Lewati"</strong> untuk melompati sebuah soal dan kembali lagi nanti.</li>
+      </ol>
+      <div class="guide-tip">💡 Kamu sebaiknya melewati soal yang tidak kamu pahami.</div>
+    </div>
+
+    <div class="card progress-card" id="overall" style="display:none;">
+      <div class="progress-head">
+        <h2 style="margin:0;">Progres Keseluruhan</h2>
+        <span class="progress-num" id="overall-num">0%</span>
+      </div>
+      <div class="progress-track big"><div class="progress-fill" id="overall-fill" style="width:0%"></div></div>
+      <div class="muted" id="overall-detail" style="font-size:13px;margin-top:6px;"></div>
+    </div>
+
     <div class="grid" id="grid"></div>
   </div>
   <script src="/shared/api.js"></script>
@@ -36,7 +58,8 @@
       }
 
       if (data.test_mode) {
-        document.getElementById('dash-desc').textContent = 'Mode Test aktif — semua simulasi dapat dijelajahi bebas tanpa urutan. Soal tidak ditampilkan.';
+        document.getElementById('dash-desc').textContent = 'Mode Test aktif — semua simulasi dapat dijelajahi bebas. Soal tidak ditampilkan.';
+        document.getElementById('guide').style.display = 'none';
         const b = document.getElementById('banner');
         b.textContent = 'Mode Test: Jelajahi semua simulasi fisika. Soal tidak tersedia dalam mode ini.';
         b.style.cssText = 'display:block; background:#dbeafe; color:#1e40af; border:1px solid #93c5fd;';
@@ -47,18 +70,44 @@
         b.style.cssText = 'display:block; background:#fef2f2; color:#991b1b; border:1px solid #fca5a5;';
       }
 
+      // Overall progress bar (hidden in test mode / while locked)
+      if (!data.test_mode && !data.exam_locked && data.progress) {
+        const p = data.progress;
+        document.getElementById('overall').style.display = 'block';
+        document.getElementById('overall-num').textContent = p.percent + '%';
+        document.getElementById('overall-fill').style.width = p.percent + '%';
+        document.getElementById('overall-detail').textContent = `${p.answered} dari ${p.total} soal terjawab di seluruh simulasi.`;
+        if (p.percent >= 100) {
+          const b = document.getElementById('banner');
+          b.textContent = '🎉 Selamat! Semua soal di seluruh simulasi telah terjawab.';
+          b.style.cssText = 'display:block;';
+        }
+      }
+
       const grid = document.getElementById('grid');
       grid.innerHTML = '';
       for (const s of data.sims) {
         const card = document.createElement('div');
         card.className = 'sim-card' + (s.completed ? ' completed' : '') + (s.unlocked ? '' : ' locked');
-        let statusText;
-        if (data.test_mode) statusText = '▶ Buka Simulasi';
-        else if (data.exam_locked) statusText = '🔒 Belum Dibuka';
-        else statusText = s.completed ? '✓ Selesai' : (s.unlocked ? '▶ Tersedia' : '🔒 Terkunci');
+
+        let statusText, progressHtml = '';
+        if (data.test_mode) {
+          statusText = '▶ Buka Simulasi';
+        } else if (data.exam_locked) {
+          statusText = '🔒 Belum Dibuka';
+        } else {
+          statusText = s.completed ? '✓ Selesai'
+            : (s.answered > 0 ? `▶ Lanjutkan` : '▶ Mulai');
+          progressHtml = `
+            <div class="sim-progress">
+              <div class="progress-track"><div class="progress-fill" style="width:${s.percent}%"></div></div>
+              <span class="sim-progress-label">${s.answered}/${s.total_questions} soal · ${s.percent}%</span>
+            </div>`;
+        }
         card.innerHTML = `
           <div class="order">Simulasi #${s.order_index}${data.test_mode ? ' <span style="background:#2563eb;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:700;vertical-align:middle;">TEST</span>' : ''}</div>
           <div class="title">${s.title}</div>
+          ${progressHtml}
           <div class="status">${statusText}</div>
         `;
         if (s.unlocked) {
@@ -67,11 +116,6 @@
           });
         }
         grid.appendChild(card);
-      }
-      if (!data.test_mode && !data.exam_locked && !data.active_sim) {
-        const b = document.getElementById('banner');
-        b.textContent = 'Selamat! Semua simulasi telah selesai.';
-        b.style.display = 'block';
       }
     }
     document.getElementById('logout').addEventListener('click', async () => {

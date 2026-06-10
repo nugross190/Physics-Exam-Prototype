@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db/pool');
 const { requireStudent } = require('../auth');
-const { gradeAnswer, STAGES } = require('../grading');
+const { gradeAnswer } = require('../grading');
 
 const router = express.Router();
 router.use(requireStudent);
@@ -26,7 +26,7 @@ function isExamLocked() {
 }
 
 const listSims = db.prepare(`SELECT sim_key, title, order_index, embed_path FROM sims ORDER BY order_index`);
-const getSession = db.prepare(`SELECT completed_sims, current_sim, current_stage FROM sessions WHERE id = ?`);
+const getSession = db.prepare(`SELECT completed_sims FROM sessions WHERE id = ?`);
 const getSim = db.prepare(`SELECT sim_key, title, embed_path FROM sims WHERE sim_key = ?`);
 const listQuestions = db.prepare(`SELECT id, stage, type, order_index, payload FROM questions WHERE sim_key = ? ORDER BY order_index ASC, id ASC`);
 const listResponses = db.prepare(`SELECT question_id, answer, is_correct, score FROM responses WHERE session_id = ? AND sim_key = ?`);
@@ -39,36 +39,47 @@ const upsertResponse = db.prepare(`
         time_spent_ms=excluded.time_spent_ms, submitted_at=datetime('now')
 `);
 const updateCursor = db.prepare(`UPDATE sessions SET last_seen_at=datetime('now'), current_sim=?, current_stage=? WHERE id=?`);
+const countQuestionsBySim = db.prepare(`SELECT sim_key, COUNT(*) AS n FROM questions GROUP BY sim_key`);
+const countAnsweredBySim = db.prepare(`SELECT sim_key, COUNT(DISTINCT question_id) AS n FROM responses WHERE session_id = ? GROUP BY sim_key`);
 const countQuestions = db.prepare(`SELECT COUNT(*) AS n FROM questions WHERE sim_key = ?`);
 const countResponses = db.prepare(`SELECT COUNT(DISTINCT question_id) AS n FROM responses WHERE session_id = ? AND sim_key = ?`);
 const updateCompletedSims = db.prepare(`UPDATE sessions SET completed_sims = ?, last_seen_at = datetime('now') WHERE id = ?`);
-const updateNextSim = db.prepare(`UPDATE sessions SET current_sim = ?, current_stage = 'tutorial' WHERE id = ?`);
 
 function parseCompleted(row) {
-  try { return new Set(JSON.parse(row.completed_sims || '[]')); }
+  try { return new Set(JSON.parse((row && row.completed_sims) || '[]')); }
   catch { return new Set(); }
 }
 
+// All sims are open from the start: students pick any sim in any order.
+// The dashboard reports per-sim progress (answered/total) instead of locks.
 router.get('/dashboard', (req, res) => {
   const { sid, studentId } = req.student;
   const testMode = isTestMode();
   const examLocked = !testMode && isExamLocked();
   const examUnlockAt = getExamUnlockAt();
   const sims = listSims.all();
-  const sess = getSession.get(sid) || { completed_sims: '[]', current_sim: 'newton', current_stage: 'tutorial' };
-  const completed = parseCompleted(sess);
 
-  let activeKey = null;
-  for (const s of sims) if (!completed.has(s.sim_key)) { activeKey = s.sim_key; break; }
+  const totals = Object.fromEntries(countQuestionsBySim.all().map(r => [r.sim_key, r.n]));
+  const answered = Object.fromEntries(countAnsweredBySim.all(sid).map(r => [r.sim_key, r.n]));
 
-  const list = sims.map((s) => ({
-    sim_key: s.sim_key,
-    title: s.title,
-    order_index: s.order_index,
-    embed_path: s.embed_path,
-    completed: !testMode && !examLocked && completed.has(s.sim_key),
-    unlocked: testMode || (!examLocked && (completed.has(s.sim_key) || s.sim_key === activeKey))
-  }));
+  let grandTotal = 0, grandAnswered = 0;
+  const list = sims.map((s) => {
+    const total = totals[s.sim_key] || 0;
+    const done = Math.min(answered[s.sim_key] || 0, total);
+    grandTotal += total;
+    grandAnswered += done;
+    return {
+      sim_key: s.sim_key,
+      title: s.title,
+      order_index: s.order_index,
+      embed_path: s.embed_path,
+      total_questions: total,
+      answered: done,
+      percent: total > 0 ? Math.round((done / total) * 100) : 0,
+      completed: total > 0 && done >= total,
+      unlocked: testMode || !examLocked
+    };
+  });
 
   res.json({
     student: { id: studentId, name: req.student.name, nis: req.student.nis },
@@ -76,8 +87,11 @@ router.get('/dashboard', (req, res) => {
     test_mode: testMode,
     exam_locked: examLocked,
     exam_unlock_at: examLocked ? examUnlockAt : null,
-    active_sim: (testMode || examLocked) ? null : activeKey,
-    current_stage: sess.current_stage || 'tutorial'
+    progress: {
+      total: grandTotal,
+      answered: grandAnswered,
+      percent: grandTotal > 0 ? Math.round((grandAnswered / grandTotal) * 100) : 0
+    }
   });
 });
 
@@ -92,11 +106,8 @@ router.get('/sim/:simKey', (req, res) => {
   if (testMode) {
     return res.json({
       sim: { sim_key: simKey, title: meta.title, embed_path: meta.embed_path },
-      stages: STAGES,
       questions: [],
       responses: [],
-      completed: false,
-      current_stage: 'tutorial',
       test_mode: true
     });
   }
@@ -105,21 +116,13 @@ router.get('/sim/:simKey', (req, res) => {
     return res.status(423).json({ error: 'exam_locked', exam_unlock_at: getExamUnlockAt() });
   }
 
-  const sess = getSession.get(sid);
-  const sims = listSims.all();
-  const completed = parseCompleted(sess);
-  const firstIncomplete = sims.map(r => r.sim_key).find(k => !completed.has(k));
-
-  if (!completed.has(simKey) && simKey !== firstIncomplete) {
-    return res.status(403).json({ error: 'Selesaikan simulasi sebelumnya terlebih dahulu' });
-  }
-
   const rawQs = listQuestions.all(simKey);
   const stripped = rawQs.map((q) => {
     const payload = JSON.parse(q.payload);
     delete payload.answer;
     delete payload.answers;
     delete payload.blanks;
+    delete payload.trap;
     if (Array.isArray(payload.rows)) {
       payload.rows = payload.rows.map(r => ({ label: r.label }));
     }
@@ -135,11 +138,8 @@ router.get('/sim/:simKey', (req, res) => {
 
   res.json({
     sim: { sim_key: simKey, title: meta.title, embed_path: meta.embed_path },
-    stages: STAGES,
     questions: stripped,
-    responses: resp,
-    completed: completed.has(simKey),
-    current_stage: sess.current_sim === simKey ? sess.current_stage : 'tutorial'
+    responses: resp
   });
 });
 
@@ -164,6 +164,8 @@ router.post('/response', (req, res) => {
   res.json({ ok: true, is_correct: isCorrect, score });
 });
 
+// Marks a sim as fully answered (kept for the admin summary). Only valid
+// once every question in the sim has a stored response.
 router.post('/sim/:simKey/complete', (req, res) => {
   if (!isTestMode() && isExamLocked()) {
     return res.status(423).json({ error: 'exam_locked', exam_unlock_at: getExamUnlockAt() });
@@ -174,19 +176,14 @@ router.post('/sim/:simKey/complete', (req, res) => {
   const need = countQuestions.get(simKey).n;
   const have = countResponses.get(sid, simKey).n;
   if (have < need) {
-    return res.status(400).json({ error: 'Belum semua tahap dijawab', need, have });
+    return res.status(400).json({ error: 'Masih ada soal yang belum dijawab', need, have });
   }
 
-  const sess = getSession.get(sid);
-  const completedSet = parseCompleted(sess);
+  const completedSet = parseCompleted(getSession.get(sid));
   completedSet.add(simKey);
   updateCompletedSims.run(JSON.stringify([...completedSet]), sid);
 
-  const sims = listSims.all().map(r => r.sim_key);
-  const next = sims.find(k => !completedSet.has(k));
-  if (next) updateNextSim.run(next, sid);
-
-  res.json({ ok: true, next_sim: next || null });
+  res.json({ ok: true });
 });
 
 module.exports = router;

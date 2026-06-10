@@ -17,7 +17,7 @@
   </div>
 
   <!-- HUD Data -->
-  <div class="hud">
+  <div class="hud" data-tut-id="hud">
     <div class="hud-header">Data Simulasi</div>
     <div class="hud-item" id="hud-time"><span>Waktu:</span> <strong id="val-time">0.0</strong> <span class="unit">s</span></div>
     <div class="hud-item" id="hud-height"><span>Tinggi Massa:</span> <strong id="val-height">3.0</strong> <span class="unit">m</span></div>
@@ -35,7 +35,7 @@
   <canvas id="simCanvas"></canvas>
 
   <!-- Settings Panel - Always Visible Top Bar -->
-  <div id="settingsPanel" class="settings-panel-top">
+  <div id="settingsPanel" class="settings-panel-top" data-tut-id="settings">
     <div class="setting-group">
       <h4>Massa Jatuh</h4>
       <div class="slider-row">
@@ -84,11 +84,11 @@
 
     <div class="panel-divider"></div>
 
-    <button id="resetSimBtn" class="reset-btn"><i class="ph ph-arrow-counter-clockwise"></i> Reset</button>
+    <button id="resetSimBtn" class="reset-btn" data-tut-id="reset-btn"><i class="ph ph-arrow-counter-clockwise"></i> Reset</button>
   </div>
 
   <!-- Bottom Playback Bar -->
-  <div class="playback-bar">
+  <div class="playback-bar" data-tut-id="playback">
     <button id="playPauseBtn" class="icon-btn main-play-btn"><i class="ph ph-play"></i></button>
     <div class="timeline-container">
       <input type="range" id="timeline" min="0" max="0" value="0" step="1">

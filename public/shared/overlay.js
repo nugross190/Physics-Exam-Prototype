@@ -1,5 +1,11 @@
 // Quiz overlay: one flat list of questions per sim, any type in any order
 // (like a single Google Form). Talks to /api/quest/* endpoints via window.API.
+//
+// Navigation is free: every question dot is clickable and unanswered
+// questions can be skipped (and revisited later). Tutorial steps support
+// the extended payload from docs/TUTORIAL_DESIGN.md: `action_prompt`
+// (try-it gate), `highlight.selector` (live spotlight inside self-built
+// sims), and `image`/`image_caption` (annotated screenshot for PhET sims).
 
 (function () {
   const TYPE_LABEL = {
@@ -20,7 +26,8 @@
     cursor: 0,       // index into questions
     open: true,
     startTs: 0,
-    previewMode: false
+    previewMode: false,
+    triedActions: {} // question_id → true once the "saya sudah mencoba" gate is clicked
   };
 
   let root, panel, fab;
@@ -70,6 +77,7 @@
           <div class="progress" id="qp-progress"></div>
           <div class="btns">
             <button class="qp-btn secondary" id="qp-prev">←</button>
+            <button class="qp-btn secondary" id="qp-skip" title="Lewati soal ini dan kembali lagi nanti">Lewati ↷</button>
             <button class="qp-btn" id="qp-next">Lanjut →</button>
           </div>
         </div>
@@ -97,6 +105,7 @@
     if (fab) fab.addEventListener('click', () => togglePanel(true));
 
     document.getElementById('qp-prev').addEventListener('click', () => move(-1));
+    document.getElementById('qp-skip').addEventListener('click', () => onSkip());
     document.getElementById('qp-next').addEventListener('click', () => onNext());
 
     if (!split) enableDrag();
@@ -162,6 +171,7 @@
   }
 
   // Numbered dot per question: green = answered, blue ring = current, gray = todo.
+  // Every dot is clickable — students may skip around freely.
   function renderDots() {
     const el = document.getElementById('qp-dots');
     el.innerHTML = state.questions.map((q, i) => {
@@ -171,14 +181,9 @@
     }).join('');
     el.querySelectorAll('.qp-dot').forEach(dot => {
       dot.addEventListener('click', () => {
-        const i = parseInt(dot.dataset.i, 10);
-        // Free navigation to any answered question or the first unanswered one.
-        const firstUnanswered = state.questions.findIndex(q => !state.responses[q.id]);
-        if (state.responses[state.questions[i].id] || i === firstUnanswered) {
-          state.cursor = i;
-          state.startTs = Date.now();
-          render();
-        }
+        state.cursor = parseInt(dot.dataset.i, 10);
+        state.startTs = Date.now();
+        render();
       });
     });
     // Keep current dot visible
@@ -188,6 +193,7 @@
 
   function renderBody() {
     const body = document.getElementById('qp-body');
+    clearSpotlight();
     const q = currentQuestion();
     if (!q) {
       body.innerHTML = `<div class="feedback info">Belum ada soal untuk simulasi ini.</div>`;
@@ -201,7 +207,23 @@
 
     if (q.type === 'tutorial_step') {
       html += `<div class="q-text"><strong>${escapeHtml(p.title || '')}</strong></div><div>${escapeHtml(p.body || '')}</div>`;
-      html += `<div class="feedback info">Baca penjelasan di atas, lalu klik "Lanjut →" untuk melanjutkan.</div>`;
+      if (p.image) {
+        html += `<img class="tut-image" src="${escapeHtml(p.image)}" alt="${escapeHtml(p.image_caption || p.title || '')}" />`;
+        if (p.image_caption) html += `<div class="tut-image-caption">${escapeHtml(p.image_caption)}</div>`;
+      }
+      if (p.action_prompt) {
+        const tried = !!existing || !!state.triedActions[q.id];
+        html += `
+          <div class="tut-action">
+            <div class="tut-action-text">🎯 ${escapeHtml(p.action_prompt)}</div>
+            <button class="tut-confirm ${tried ? 'done' : ''}" id="tut-confirm" ${tried ? 'disabled' : ''}>
+              ${tried ? '✓ Sudah dicoba' : '✓ Saya sudah mencoba'}
+            </button>
+          </div>`;
+      } else {
+        html += `<div class="feedback info">Baca penjelasan di atas, lalu klik "Lanjut →" untuk melanjutkan.</div>`;
+      }
+      if (p.highlight && p.highlight.selector) showSpotlight(p.highlight.selector);
     } else if (q.type === 'var_test') {
       html += `<div class="q-text">${escapeHtml(p.prompt || '')}</div>`;
       if (p.hint) html += `<div class="muted" style="font-size:12px; margin-bottom:8px;">💡 ${escapeHtml(p.hint)}</div>`;
@@ -258,6 +280,55 @@
     wireBodyInteractions(q);
   }
 
+  // ── Tutorial spotlight ───────────────────────────────────────────────────
+  // Dims the sim pane and cuts a glowing window around the highlighted
+  // element inside the (same-origin) sim iframe. The ring ignores pointer
+  // events so the student can interact with the highlighted control.
+  // PhET sims are minified so they get no selector — text/image steps only.
+  let spotlightTimer = null;
+
+  function clearSpotlight() {
+    if (spotlightTimer) { clearInterval(spotlightTimer); spotlightTimer = null; }
+    const el = document.getElementById('tut-spotlight');
+    if (el) el.remove();
+  }
+
+  function showSpotlight(selector) {
+    clearSpotlight();
+    // Re-position continuously: the sim iframe loads async, its layout can
+    // shift, and its content may scroll. Cheap (~2 rect reads / tick).
+    spotlightTimer = setInterval(() => positionSpotlight(selector), 350);
+    positionSpotlight(selector);
+  }
+
+  function positionSpotlight(selector) {
+    const pane = document.getElementById('sim-pane');
+    const iframe = document.getElementById('sim-host');
+    if (!pane || !iframe) return;
+    let target = null;
+    try {
+      target = iframe.contentDocument && iframe.contentDocument.querySelector(selector);
+    } catch { /* cross-origin or not ready */ }
+    let ring = document.getElementById('tut-spotlight');
+    if (!target) { if (ring) ring.remove(); return; }
+
+    const tr = target.getBoundingClientRect();
+    if (!tr.width && !tr.height) { if (ring) ring.remove(); return; }
+
+    if (!ring) {
+      ring = document.createElement('div');
+      ring.id = 'tut-spotlight';
+      pane.appendChild(ring);
+    }
+    // The iframe fills #sim-pane (inset 0), so rect coords inside the iframe
+    // map 1:1 onto pane-relative coords.
+    const pad = 6;
+    ring.style.left = (tr.left - pad) + 'px';
+    ring.style.top = (tr.top - pad) + 'px';
+    ring.style.width = (tr.width + pad * 2) + 'px';
+    ring.style.height = (tr.height + pad * 2) + 'px';
+  }
+
   function renderWordBankTemplate(template) {
     return template.replace(/__([0-9]+)__/g, (m, n) => {
       return `<span class="wb-input" data-blank="${parseInt(n,10)-1}"></span>`;
@@ -265,6 +336,18 @@
   }
 
   function wireBodyInteractions(q) {
+    if (q.type === 'tutorial_step') {
+      const confirmBtn = document.getElementById('tut-confirm');
+      if (confirmBtn && !confirmBtn.disabled) {
+        confirmBtn.addEventListener('click', () => {
+          state.triedActions[q.id] = true;
+          confirmBtn.disabled = true;
+          confirmBtn.classList.add('done');
+          confirmBtn.textContent = '✓ Sudah dicoba';
+          renderFooter();
+        });
+      }
+    }
     if (q.type === 'table_mc') {
       document.querySelectorAll('.tmc-table input[type="radio"]').forEach(radio => {
         radio.addEventListener('change', () => {
@@ -373,7 +456,7 @@
     if (!q) return;
     const ans = readAnswer(q);
     if (answerIsEmpty(q, ans)) {
-      alert('Jawaban belum diisi.');
+      alert('Jawaban belum diisi. Gunakan tombol "Lewati ↷" jika ingin melompati soal ini.');
       return false;
     }
     if (state.previewMode) {
@@ -401,6 +484,15 @@
     move(1);
   }
 
+  // Skip without answering; the dot stays gray so the student can return.
+  function onSkip() {
+    if (state.cursor >= state.questions.length - 1) {
+      tryComplete();
+      return;
+    }
+    move(1);
+  }
+
   function move(delta) {
     const next = state.cursor + delta;
     if (next < 0 || next >= state.questions.length) return;
@@ -411,10 +503,15 @@
 
   async function tryComplete() {
     const body = document.getElementById('qp-body');
+    clearSpotlight();
+    const unanswered = state.questions
+      .map((q, i) => (state.responses[q.id] ? null : i))
+      .filter(i => i !== null);
+
     if (state.previewMode) {
       body.innerHTML = `
         <div class="feedback info"><strong>Preview selesai.</strong></div>
-        <p>Semua soal sudah dicoba. Jawaban tidak direkam karena ini adalah mode preview admin.</p>
+        <p>Jawaban tidak direkam karena ini adalah mode preview admin.</p>
         <button class="qp-btn secondary" onclick="window.close()">Tutup Tab</button>
         <button class="qp-btn" onclick="window.location.href='/admin.html'">Kembali ke Admin</button>
       `;
@@ -422,11 +519,36 @@
       updateBadge();
       return;
     }
+
+    // Some questions skipped: show a summary with shortcuts back to them.
+    // Skipping is allowed — students are told to skip what they don't
+    // understand — so this is informative, not blocking.
+    if (unanswered.length > 0) {
+      body.innerHTML = `
+        <div class="feedback info"><strong>Kamu sudah mencapai akhir daftar soal.</strong></div>
+        <p>Masih ada <strong>${unanswered.length}</strong> soal yang dilewati. Klik nomor di bawah untuk kembali ke soal itu, atau biarkan jika memang tidak kamu pahami.</p>
+        <div class="qp-unanswered">
+          ${unanswered.map(i => `<button class="qp-dot" data-jump="${i}">${i + 1}</button>`).join('')}
+        </div>
+        <button class="qp-btn" style="margin-top:14px;" onclick="window.location.href='/dashboard.html'">Kembali ke Dashboard</button>
+      `;
+      body.querySelectorAll('[data-jump]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.cursor = parseInt(btn.dataset.jump, 10);
+          state.startTs = Date.now();
+          render();
+        });
+      });
+      renderDots();
+      updateBadge();
+      return;
+    }
+
     try {
-      const r = await API.post(`/api/quest/sim/${encodeURIComponent(state.simKey)}/complete`, {});
+      await API.post(`/api/quest/sim/${encodeURIComponent(state.simKey)}/complete`, {});
       body.innerHTML = `
         <div class="feedback ok"><strong>✓ Simulasi selesai!</strong></div>
-        <p>Semua soal telah dijawab. ${r.next_sim ? 'Simulasi berikutnya sudah terbuka.' : 'Kamu telah menyelesaikan seluruh rangkaian ujian!'}</p>
+        <p>Semua soal pada simulasi ini telah dijawab. Kamu bisa membuka simulasi lain dari dashboard kapan saja.</p>
         <button class="qp-btn" onclick="window.location.href='/dashboard.html'">Kembali ke Dashboard</button>
       `;
       renderDots();
@@ -442,10 +564,26 @@
     document.getElementById('qp-progress').textContent = `${done}/${total} terjawab`;
     const q = currentQuestion();
     const nextBtn = document.getElementById('qp-next');
+    const skipBtn = document.getElementById('qp-skip');
     const isLast = state.cursor === total - 1;
+    const answered = q && !!state.responses[q.id];
+
     nextBtn.textContent = isLast
       ? 'Selesai ✓'
-      : (q && (q.type === 'tutorial_step' || state.responses[q.id]) ? 'Lanjut →' : 'Jawab & Lanjut →');
+      : (q && (q.type === 'tutorial_step' || answered) ? 'Lanjut →' : 'Jawab & Lanjut →');
+
+    // Tutorial steps with an action prompt gate the Lanjut button until the
+    // student confirms they tried it (first visit only).
+    let gated = false;
+    if (q && q.type === 'tutorial_step' && q.payload.action_prompt && !answered && !state.triedActions[q.id]) {
+      gated = true;
+    }
+    nextBtn.disabled = gated;
+    nextBtn.title = gated ? 'Klik "Saya sudah mencoba" terlebih dahulu' : '';
+
+    // Skip is for real questions that haven't been answered yet.
+    const showSkip = q && !answered && q.type !== 'tutorial_step';
+    skipBtn.style.display = showSkip ? '' : 'none';
   }
 
   function escapeHtml(s) {

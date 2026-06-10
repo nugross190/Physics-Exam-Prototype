@@ -156,7 +156,7 @@
 
   <div class="container" id="app-view" style="display:none;">
     <!-- Test Mode control -->
-    <div class="card" id="test-mode-card" style="margin-bottom:16px;display:flex;align-items:center;gap:16px;padding:14px 20px;border-left:4px solid #2563eb;">
+    <div class="card" id="test-mode-card" style="margin-bottom:12px;display:flex;align-items:center;gap:16px;padding:14px 20px;border-left:4px solid #2563eb;">
       <div>
         <strong>Mode Test Siswa</strong>
         <p class="muted" style="margin:3px 0 0;font-size:13px;">Aktifkan agar siswa dapat menjelajahi semua simulasi tanpa urutan dan tanpa soal.</p>
@@ -164,6 +164,23 @@
       <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
         <span id="test-mode-status" style="font-size:13px;font-weight:600;"></span>
         <button class="btn" id="test-mode-toggle" style="min-width:120px;">Memuat...</button>
+      </div>
+    </div>
+
+    <!-- Exam Schedule Lock -->
+    <div class="card" id="exam-lock-card" style="margin-bottom:16px;padding:14px 20px;border-left:4px solid #dc2626;">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:240px;">
+          <strong>Jadwal Buka Ujian</strong>
+          <p class="muted" style="margin:3px 0 0;font-size:13px;">Ujian hanya dapat diakses setelah waktu yang ditentukan. Kosongkan untuk membuka tanpa batas.</p>
+          <p id="exam-lock-status" style="margin:6px 0 0;font-size:13px;font-weight:600;"></p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="datetime-local" id="exam-lock-input" class="input" style="font-size:13px;padding:6px 10px;" />
+          <button class="btn btn-secondary" id="exam-lock-tomorrow">Besok 11:00</button>
+          <button class="btn" id="exam-lock-save">Simpan</button>
+          <button class="btn btn-bad" id="exam-lock-clear">Hapus Kunci</button>
+        </div>
       </div>
     </div>
 
@@ -264,34 +281,80 @@
       });
     });
 
-    async function loadTestModeStatus() {
-      const { test_mode } = await API.get('/api/admin/settings');
+    function fmtTime(iso) {
+      if (!iso) return null;
+      const d = new Date(iso);
+      return isNaN(d) ? iso : d.toLocaleString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function loadSettings() {
+      const { test_mode, exam_unlock_at } = await API.get('/api/admin/settings');
+
+      // ── Test mode ──────────────────────────────────
       const statusEl = document.getElementById('test-mode-status');
       const toggleBtn = document.getElementById('test-mode-toggle');
-      const card = document.getElementById('test-mode-card');
+      const tmCard = document.getElementById('test-mode-card');
       if (test_mode) {
         statusEl.textContent = 'AKTIF';
         statusEl.style.color = '#2563eb';
         toggleBtn.textContent = 'Nonaktifkan Mode Test';
         toggleBtn.className = 'btn btn-bad';
-        card.style.borderLeftColor = '#2563eb';
-        card.style.background = '#eff6ff';
+        tmCard.style.background = '#eff6ff';
       } else {
         statusEl.textContent = 'Nonaktif';
         statusEl.style.color = '#64748b';
         toggleBtn.textContent = 'Aktifkan Mode Test';
         toggleBtn.className = 'btn';
-        card.style.borderLeftColor = '#2563eb';
-        card.style.background = '';
+        tmCard.style.background = '';
       }
       toggleBtn.onclick = async () => {
         await API.post('/api/admin/settings/test-mode', { enabled: !test_mode });
-        loadTestModeStatus();
+        loadSettings();
+      };
+
+      // ── Exam schedule lock ─────────────────────────
+      const lockStatusEl = document.getElementById('exam-lock-status');
+      const lockInput = document.getElementById('exam-lock-input');
+      const lockCard = document.getElementById('exam-lock-card');
+      const now = new Date();
+      const isLocked = exam_unlock_at && new Date(exam_unlock_at) > now;
+
+      if (isLocked) {
+        lockStatusEl.innerHTML = `🔒 Terkunci hingga: <span style="color:#dc2626;">${fmtTime(exam_unlock_at)}</span>`;
+        lockCard.style.background = '#fef2f2';
+      } else if (exam_unlock_at) {
+        lockStatusEl.innerHTML = `<span style="color:#16a34a;">✓ Terbuka</span> (kunci sudah lewat: ${fmtTime(exam_unlock_at)})`;
+        lockCard.style.background = '';
+      } else {
+        lockStatusEl.innerHTML = '<span style="color:#16a34a;">✓ Terbuka</span> — tidak ada jadwal kunci';
+        lockCard.style.background = '';
+      }
+
+      // datetime-local value: YYYY-MM-DDTHH:mm
+      lockInput.value = exam_unlock_at ? exam_unlock_at.slice(0, 16) : '';
+
+      document.getElementById('exam-lock-tomorrow').onclick = () => {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        d.setHours(11, 0, 0, 0);
+        const pad = n => String(n).padStart(2, '0');
+        lockInput.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T11:00`;
+      };
+      document.getElementById('exam-lock-save').onclick = async () => {
+        const val = lockInput.value;
+        if (!val) { alert('Pilih tanggal dan waktu terlebih dahulu.'); return; }
+        await API.post('/api/admin/settings/exam-unlock', { unlock_at: val + ':00' });
+        loadSettings();
+      };
+      document.getElementById('exam-lock-clear').onclick = async () => {
+        if (!confirm('Hapus kunci? Ujian akan langsung dapat diakses.')) return;
+        await API.post('/api/admin/settings/exam-unlock', { unlock_at: null });
+        loadSettings();
       };
     }
 
     async function loadAll() {
-      loadTestModeStatus();
+      loadSettings();
       const s = await API.get('/api/admin/sims'); sims = s.sims;
       const sel = document.getElementById('q-sim');
       sel.innerHTML = sims.map(x => `<option value="${x.sim_key}">${x.title}</option>`).join('');

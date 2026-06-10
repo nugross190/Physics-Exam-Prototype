@@ -88,13 +88,24 @@ const setSetting = db.prepare(`INSERT OR REPLACE INTO settings (key, value) VALU
 
 router.get('/settings', (req, res) => {
   const tm = getSetting.get('test_mode');
-  res.json({ test_mode: tm ? tm.value === 'true' : false });
+  const eu = getSetting.get('exam_unlock_at');
+  res.json({
+    test_mode: tm ? tm.value === 'true' : false,
+    exam_unlock_at: (eu && eu.value) ? eu.value : null
+  });
 });
 
 router.post('/settings/test-mode', (req, res) => {
   const { enabled } = req.body || {};
   setSetting.run('test_mode', enabled ? 'true' : 'false');
   res.json({ ok: true, test_mode: !!enabled });
+});
+
+router.post('/settings/exam-unlock', (req, res) => {
+  const { unlock_at } = req.body || {};
+  // unlock_at: ISO datetime string, or null/empty to remove the lock
+  setSetting.run('exam_unlock_at', unlock_at ? String(unlock_at).trim() : '');
+  res.json({ ok: true, exam_unlock_at: unlock_at || null });
 });
 
 // ── Questions ────────────────────────────────────────────────────────────

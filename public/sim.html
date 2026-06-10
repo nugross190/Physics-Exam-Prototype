@@ -47,12 +47,35 @@
         : `/api/quest/sim/${encodeURIComponent(key)}`;
 
       let meta;
-      try {
-        meta = await API.get(endpoint);
-      } catch (err) {
-        alert(err.message);
-        window.location.href = isPreview ? '/admin.html' : '/dashboard.html';
-        return;
+      {
+        const r = await fetch(endpoint, { credentials: 'same-origin' });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          if (data.error === 'exam_locked') {
+            const unlockTime = data.exam_unlock_at
+              ? new Date(data.exam_unlock_at).toLocaleString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+              : '—';
+            document.getElementById('sim-title').textContent = 'Ujian Belum Dibuka';
+            document.getElementById('topbar-right').style.display = 'none';
+            document.getElementById('sim-layout').innerHTML = `
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#f8fafc;font-family:Inter,system-ui,sans-serif;">
+                <div style="text-align:center;max-width:400px;padding:40px 24px;">
+                  <div style="font-size:64px;margin-bottom:16px;">🔒</div>
+                  <h2 style="color:#0f172a;margin:0 0 8px;">Ujian Belum Dibuka</h2>
+                  <p style="color:#64748b;margin:0 0 24px;line-height:1.6;">
+                    Ujian akan dapat diakses mulai:<br>
+                    <strong style="color:#0f172a;">${unlockTime}</strong>
+                  </p>
+                  <a href="/dashboard.html" style="background:#2563eb;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">← Kembali ke Dashboard</a>
+                </div>
+              </div>`;
+            return;
+          }
+          alert(data.error || r.statusText);
+          window.location.href = isPreview ? '/admin.html' : '/dashboard.html';
+          return;
+        }
+        meta = data;
       }
 
       const isTestMode = !isPreview && !!meta.test_mode;

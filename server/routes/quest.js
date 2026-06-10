@@ -7,9 +7,22 @@ const router = express.Router();
 router.use(requireStudent);
 
 const getSettingStmt = db.prepare(`SELECT value FROM settings WHERE key = ?`);
+
 function isTestMode() {
   const row = getSettingStmt.get('test_mode');
   return row && row.value === 'true';
+}
+
+function getExamUnlockAt() {
+  const row = getSettingStmt.get('exam_unlock_at');
+  return (row && row.value) ? row.value : null;
+}
+
+function isExamLocked() {
+  const unlockStr = getExamUnlockAt();
+  if (!unlockStr) return false;
+  const t = new Date(unlockStr);
+  return !isNaN(t.getTime()) && Date.now() < t.getTime();
 }
 
 const listSims = db.prepare(`SELECT sim_key, title, order_index, embed_path FROM sims ORDER BY order_index`);
@@ -39,6 +52,8 @@ function parseCompleted(row) {
 router.get('/dashboard', (req, res) => {
   const { sid, studentId } = req.student;
   const testMode = isTestMode();
+  const examLocked = !testMode && isExamLocked();
+  const examUnlockAt = getExamUnlockAt();
   const sims = listSims.all();
   const sess = getSession.get(sid) || { completed_sims: '[]', current_sim: 'newton', current_stage: 'tutorial' };
   const completed = parseCompleted(sess);
@@ -51,15 +66,17 @@ router.get('/dashboard', (req, res) => {
     title: s.title,
     order_index: s.order_index,
     embed_path: s.embed_path,
-    completed: !testMode && completed.has(s.sim_key),
-    unlocked: testMode || completed.has(s.sim_key) || s.sim_key === activeKey
+    completed: !testMode && !examLocked && completed.has(s.sim_key),
+    unlocked: testMode || (!examLocked && (completed.has(s.sim_key) || s.sim_key === activeKey))
   }));
 
   res.json({
     student: { id: studentId, name: req.student.name, nis: req.student.nis },
     sims: list,
     test_mode: testMode,
-    active_sim: testMode ? null : activeKey,
+    exam_locked: examLocked,
+    exam_unlock_at: examLocked ? examUnlockAt : null,
+    active_sim: (testMode || examLocked) ? null : activeKey,
     current_stage: sess.current_stage || 'tutorial'
   });
 });
@@ -82,6 +99,10 @@ router.get('/sim/:simKey', (req, res) => {
       current_stage: 'tutorial',
       test_mode: true
     });
+  }
+
+  if (isExamLocked()) {
+    return res.status(423).json({ error: 'exam_locked', exam_unlock_at: getExamUnlockAt() });
   }
 
   const sess = getSession.get(sid);
@@ -119,6 +140,9 @@ router.get('/sim/:simKey', (req, res) => {
 });
 
 router.post('/response', (req, res) => {
+  if (!isTestMode() && isExamLocked()) {
+    return res.status(423).json({ error: 'exam_locked', exam_unlock_at: getExamUnlockAt() });
+  }
   const { sid, studentId } = req.student;
   const { question_id, answer, time_spent_ms } = req.body || {};
   if (!question_id) return res.status(400).json({ error: 'question_id wajib' });
@@ -137,6 +161,9 @@ router.post('/response', (req, res) => {
 });
 
 router.post('/sim/:simKey/complete', (req, res) => {
+  if (!isTestMode() && isExamLocked()) {
+    return res.status(423).json({ error: 'exam_locked', exam_unlock_at: getExamUnlockAt() });
+  }
   const { sid } = req.student;
   const simKey = req.params.simKey;
 

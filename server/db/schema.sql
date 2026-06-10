@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS responses (
   stage         TEXT NOT NULL,
   answer        TEXT NOT NULL,                 -- JSON
   is_correct    INTEGER,                       -- 1, 0, or NULL
+  score         REAL,                          -- partial score (NULL for var_test)
   time_spent_ms INTEGER,
   submitted_at  TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE (session_id, question_id)

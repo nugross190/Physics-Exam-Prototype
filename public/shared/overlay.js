@@ -8,7 +8,8 @@
     simple_mc: 'Pilihan Ganda',
     complex_mc: 'PG Kompleks',
     true_false: 'Benar/Salah',
-    word_bank: 'Bank Kata'
+    word_bank: 'Bank Kata',
+    table_mc: 'PG Tabel'
   };
 
   const state = {
@@ -232,6 +233,21 @@
       html += `<div class="muted" style="font-size:12px;">Klik kata di bawah lalu klik kotak isian untuk menempatkan.</div>`;
       html += `<div class="wb-bank" id="wb-bank">${p.bank.map((w,i) => `<div class="wb-word" data-w="${escapeHtml(w)}">${escapeHtml(w)}</div>`).join('')}</div>`;
       html += `<button class="qp-btn secondary" id="wb-clear" style="margin-top:8px;">Reset</button>`;
+    } else if (q.type === 'table_mc') {
+      html += `<div class="q-text">${escapeHtml(p.question)}</div>`;
+      const prev = (existing && Array.isArray(existing.answer)) ? existing.answer : [];
+      html += `<table class="tmc-table"><thead><tr><th>${escapeHtml(p.row_header || '')}</th>`;
+      (p.columns || []).forEach(col => { html += `<th>${escapeHtml(col)}</th>`; });
+      html += `</tr></thead><tbody>`;
+      (p.rows || []).forEach((row, ri) => {
+        html += `<tr data-row="${ri}"><td>${escapeHtml(row.label)}</td>`;
+        (p.columns || []).forEach((col, ci) => {
+          const sel = prev[ri] === ci;
+          html += `<td class="${sel ? 'tmc-sel' : ''}"><label><input type="radio" name="tmc-${ri}" value="${ci}" ${sel ? 'checked' : ''} /></label></td>`;
+        });
+        html += `</tr>`;
+      });
+      html += `</tbody></table>`;
     }
 
     if (existing && existing.is_correct === true)  html += `<div class="feedback ok">✓ Jawaban tersimpan (benar).</div>`;
@@ -249,6 +265,15 @@
   }
 
   function wireBodyInteractions(q) {
+    if (q.type === 'table_mc') {
+      document.querySelectorAll('.tmc-table input[type="radio"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+          const row = radio.closest('tr');
+          row.querySelectorAll('td').forEach(td => td.classList.remove('tmc-sel'));
+          radio.closest('td').classList.add('tmc-sel');
+        });
+      });
+    }
     if (q.type === 'simple_mc' || q.type === 'true_false') {
       document.querySelectorAll('.option').forEach(el => {
         el.addEventListener('click', () => {
@@ -323,6 +348,12 @@
     if (q.type === 'word_bank') {
       return Array.from(document.querySelectorAll('.wb-input')).map(el => el.textContent.trim());
     }
+    if (q.type === 'table_mc') {
+      return (q.payload.rows || []).map((_, ri) => {
+        const sel = document.querySelector(`input[name="tmc-${ri}"]:checked`);
+        return sel ? parseInt(sel.value, 10) : -1;
+      });
+    }
     return null;
   }
 
@@ -333,6 +364,7 @@
     if (q.type === 'complex_mc') return !ans || ans.length === 0;
     if (q.type === 'true_false') return ans === null;
     if (q.type === 'word_bank') return !ans || ans.some(x => !x);
+    if (q.type === 'table_mc') return !ans || ans.some(v => v === -1 || v == null);
     return true;
   }
 

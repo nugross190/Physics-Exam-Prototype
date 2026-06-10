@@ -120,6 +120,9 @@ router.get('/sim/:simKey', (req, res) => {
     delete payload.answer;
     delete payload.answers;
     delete payload.blanks;
+    if (Array.isArray(payload.rows)) {
+      payload.rows = payload.rows.map(r => ({ label: r.label }));
+    }
     return { id: q.id, stage: q.stage, type: q.type, order_index: q.order_index, payload };
   });
 

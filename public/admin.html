@@ -429,6 +429,7 @@
       var_test:      { label: 'Uji Variabel',     icon: '🔬', stage: 'var_test' },
       simple_mc:     { label: 'Pilihan Ganda',    icon: '◉',  stage: 'inquiry' },
       complex_mc:    { label: 'PG Kompleks',      icon: '☑',  stage: 'inquiry' },
+      table_mc:      { label: 'PG Tabel',         icon: '⊞',  stage: 'inquiry' },
       true_false:    { label: 'Benar / Salah',    icon: '✓✗', stage: 'true_false' },
       word_bank:     { label: 'Isian Bank Kata',  icon: '🧩', stage: 'conclusion' }
     };
@@ -439,6 +440,7 @@
         case 'var_test':      return { prompt: '', hint: '' };
         case 'simple_mc':     return { question: '', options: ['', '', '', ''], answer: 0 };
         case 'complex_mc':    return { question: '', options: ['', '', '', ''], answers: [] };
+        case 'table_mc':      return { question: '', row_header: 'Besaran', columns: ['Kolom A', 'Kolom B'], rows: [{ label: '', answer: 0 }, { label: '', answer: 1 }] };
         case 'true_false':    return { statement: '', answer: true };
         case 'word_bank':     return { template: '', bank: ['', '', ''], blanks: [] };
       }
@@ -487,6 +489,25 @@
           });
           return `<div class="question-text">${filledTemplate}</div>
                   <div class="hint-text">Bank kata: ${(p.bank || []).map(escapeHtml).join(', ')}</div>`;
+        }
+        case 'table_mc': {
+          const cols = p.columns || [];
+          const trows = p.rows || [];
+          let t = `<div class="question-text">${escapeHtml(p.question || '')}</div>`;
+          t += `<table style="border-collapse:collapse;font-size:12px;width:100%;margin-top:6px;">`;
+          t += `<thead><tr><th style="border:1px solid #e2e8f0;padding:5px 8px;background:#f1f5f9;text-align:left;">${escapeHtml(p.row_header || '')}</th>`;
+          cols.forEach(c => { t += `<th style="border:1px solid #e2e8f0;padding:5px 8px;background:#f1f5f9;">${escapeHtml(c)}</th>`; });
+          t += `</tr></thead><tbody>`;
+          trows.forEach(r => {
+            t += `<tr><td style="border:1px solid #e2e8f0;padding:5px 8px;font-weight:600;">${escapeHtml(r.label)}</td>`;
+            cols.forEach((c, ci) => {
+              const correct = ci === r.answer;
+              t += `<td style="border:1px solid #e2e8f0;padding:5px 8px;text-align:center;${correct ? 'background:#dcfce7;color:#166534;font-weight:700;' : ''}">${correct ? '✓' : '—'}</td>`;
+            });
+            t += `</tr>`;
+          });
+          t += `</tbody></table>`;
+          return t;
         }
       }
       return '<em>tipe tidak dikenal</em>';
@@ -562,6 +583,26 @@
               <button type="button" class="add-opt" data-add="blanks">+ Tambah jawaban</button>
             </div>`;
         }
+        case 'table_mc': {
+          const cols = (p.columns || []).map((c, i) => tmcColRow(i, c)).join('');
+          const trows = (p.rows || []).map((r, i) => tmcRowItem(i, r.label, r.answer, p.columns || [])).join('');
+          return `
+            <div class="field"><label class="field-label">Pertanyaan</label>
+              <textarea class="input" data-field="question" rows="3">${escapeHtml(p.question || '')}</textarea></div>
+            <div class="field"><label class="field-label">Label kolom pertama (header baris)</label>
+              <input class="input" data-field="row_header" value="${escapeHtml(p.row_header || '')}" /></div>
+            <div class="field"><label class="field-label">Kolom-kolom jawaban</label>
+              <div class="options-list" data-list="tmc-cols">${cols}</div>
+              <button type="button" data-tmc-add="col" style="margin-top:6px;" class="add-opt" data-add="__tmc-col__">+ Tambah kolom</button>
+            </div>
+            <div class="field">
+              <label class="field-label">Baris (label + jawaban benar)</label>
+              <div class="muted" style="font-size:12px;margin-bottom:6px;">Pilih kolom yang benar untuk setiap baris. Klik "↺ Perbarui" jika mengubah kolom.</div>
+              <div class="options-list" data-list="tmc-rows">${trows}</div>
+              <button type="button" data-tmc-add="row" style="margin-top:6px;" class="add-opt" data-add="__tmc-row__">+ Tambah baris</button>
+              <button type="button" data-tmc-refresh style="margin-top:6px;margin-left:6px;" class="add-opt" data-add="__tmc-noop__">↺ Perbarui pilihan</button>
+            </div>`;
+        }
       }
       return '<em>tipe tidak dikenal</em>';
     }
@@ -584,6 +625,24 @@
         <div class="option-row">
           <span class="opt-mark" style="min-width:40px;">${kind === 'blanks' ? `__${i+1}__` : `#${i+1}`}</span>
           <input type="text" class="opt-text" value="${escapeHtml(val || '')}" placeholder="${kind === 'blanks' ? 'Jawaban...' : 'Kata...'}" />
+          <button type="button" class="del-opt" title="Hapus">×</button>
+        </div>`;
+    }
+    function tmcColRow(i, val) {
+      return `
+        <div class="option-row">
+          <span class="opt-mark" style="min-width:40px;">#${i+1}</span>
+          <input type="text" class="opt-text" value="${escapeHtml(val || '')}" placeholder="Nama kolom..." />
+          <button type="button" class="del-opt" title="Hapus">×</button>
+        </div>`;
+    }
+    function tmcRowItem(i, label, answer, columns) {
+      const opts = (columns.length ? columns : ['Kolom 1']).map((c, ci) =>
+        `<option value="${ci}" ${ci === answer ? 'selected' : ''}>${escapeHtml(c) || `Kolom ${ci+1}`}</option>`).join('');
+      return `
+        <div class="option-row">
+          <input type="text" class="opt-text tmc-row-label" value="${escapeHtml(label || '')}" placeholder="Label baris..." style="flex:2;" />
+          <select class="tmc-row-ans" style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;min-width:130px;">${opts}</select>
           <button type="button" class="del-opt" title="Hapus">×</button>
         </div>`;
     }
@@ -615,6 +674,15 @@
         }
         case 'word_bank':
           return { template: get('template'), bank: getList('bank'), blanks: getList('blanks') };
+        case 'table_mc': {
+          const columns = Array.from(rowEl.querySelectorAll('[data-list="tmc-cols"] .opt-text')).map(i => i.value.trim());
+          const rowItems = Array.from(rowEl.querySelectorAll('[data-list="tmc-rows"] .option-row'));
+          const rows = rowItems.map(r => ({
+            label: (r.querySelector('.tmc-row-label') || {}).value?.trim() || '',
+            answer: parseInt((r.querySelector('.tmc-row-ans') || {}).value || '0', 10)
+          }));
+          return { question: get('question'), row_header: get('row_header'), columns, rows };
+        }
       }
       return {};
     }
@@ -648,6 +716,12 @@
           const matches = (payload.template.match(/__\d+__/g) || []).length;
           if (matches !== payload.blanks.length) return `Jumlah blank di template (${matches}) tidak cocok dengan jumlah jawaban (${payload.blanks.length})`;
           return null;
+        case 'table_mc':
+          if (!payload.question?.trim()) return 'Pertanyaan tidak boleh kosong';
+          if (!payload.columns?.length || payload.columns.every(c => !c.trim())) return 'Minimal 1 kolom';
+          if (!payload.rows?.length) return 'Minimal 1 baris';
+          if (payload.rows.some(r => !r.label?.trim())) return 'Semua baris harus memiliki label';
+          return null;
       }
       return null;
     }
@@ -670,6 +744,7 @@
       card.querySelectorAll('.add-opt').forEach(btn => {
         btn.addEventListener('click', () => {
           const target = btn.dataset.add;
+          if (!target || target.startsWith('__tmc')) return; // handled by table_mc block
           const listName = target === 'option' ? 'options' : target;
           const list = card.querySelector(`[data-list="${listName}"]`);
           const idx = list.children.length;
@@ -700,6 +775,43 @@
         btn.addEventListener('click', () => {
           card.querySelectorAll('.tf-toggle button').forEach(b => b.classList.remove('active', 't', 'f'));
           btn.classList.add('active', btn.dataset.tf === 'true' ? 't' : 'f');
+        });
+      });
+      // Table MC: add column
+      card.querySelectorAll('[data-tmc-add="col"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const list = card.querySelector('[data-list="tmc-cols"]');
+          const idx = list.children.length;
+          const tmp = document.createElement('div');
+          tmp.innerHTML = tmcColRow(idx, '');
+          const node = tmp.firstElementChild;
+          list.appendChild(node);
+          node.querySelector('.del-opt').addEventListener('click', () => node.remove());
+        });
+      });
+      // Table MC: add row
+      card.querySelectorAll('[data-tmc-add="row"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const columns = Array.from(card.querySelectorAll('[data-list="tmc-cols"] .opt-text')).map(i => i.value.trim());
+          const list = card.querySelector('[data-list="tmc-rows"]');
+          const tmp = document.createElement('div');
+          tmp.innerHTML = tmcRowItem(list.children.length, '', 0, columns);
+          const node = tmp.firstElementChild;
+          list.appendChild(node);
+          node.querySelector('.del-opt').addEventListener('click', () => node.remove());
+        });
+      });
+      // Table MC: refresh column selects
+      card.querySelectorAll('[data-tmc-refresh]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const columns = Array.from(card.querySelectorAll('[data-list="tmc-cols"] .opt-text')).map(i => i.value.trim());
+          card.querySelectorAll('[data-list="tmc-rows"] .option-row').forEach(row => {
+            const sel = row.querySelector('.tmc-row-ans');
+            if (!sel) return;
+            const prev = parseInt(sel.value || '0', 10);
+            sel.innerHTML = (columns.length ? columns : ['Kolom 1']).map((c, ci) =>
+              `<option value="${ci}" ${ci === prev ? 'selected' : ''}>${escapeHtml(c) || `Kolom ${ci+1}`}</option>`).join('');
+          });
         });
       });
     }

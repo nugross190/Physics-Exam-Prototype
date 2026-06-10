@@ -38,6 +38,13 @@ function gradeAnswer(question, answer) {
         sum + (picked[i] && picked[i].trim().toLowerCase() === exp.trim().toLowerCase() ? 1 : 0), 0);
       return { isCorrect: ok, score, normalized: picked };
     }
+    case 'table_mc': {
+      const picked = Array.isArray(answer) ? answer.map(Number) : [];
+      const rows = p.rows || [];
+      const ok = rows.length > 0 && rows.every((r, i) => picked[i] === r.answer);
+      const score = rows.reduce((sum, r, i) => sum + (picked[i] === r.answer ? 1 : 0), 0);
+      return { isCorrect: ok, score, normalized: picked };
+    }
     case 'tutorial_step':
       return { isCorrect: true, score: 1, normalized: { acknowledged: true } };
     case 'var_test':

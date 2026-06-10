@@ -14,7 +14,7 @@
       <a href="/dashboard.html">← Dashboard</a>
       <strong id="sim-title">Memuat...</strong>
     </div>
-    <div class="right">
+    <div class="right" id="topbar-right">
       <button id="toggle-quiz" title="Sembunyikan/tampilkan panel quiz">◀ Sembunyikan Quiz</button>
     </div>
   </div>
@@ -55,19 +55,33 @@
         return;
       }
 
-      document.getElementById('sim-title').textContent = meta.sim.title + (isPreview ? ' — MODE PREVIEW' : '');
+      const isTestMode = !isPreview && !!meta.test_mode;
+
+      document.getElementById('sim-title').textContent =
+        meta.sim.title + (isPreview ? ' — MODE PREVIEW' : '') + (isTestMode ? ' — MODE TEST' : '');
       document.getElementById('sim-host').src = meta.sim.embed_path;
 
       if (isPreview) {
-        // Show a sticky preview banner above the topbar content.
         const banner = document.createElement('div');
         banner.id = 'preview-banner';
         banner.style.cssText = 'background:#f59e0b;color:#78350f;font-weight:700;font-size:12px;text-align:center;padding:4px 8px;position:fixed;top:0;left:0;right:0;z-index:200;letter-spacing:.03em;';
         banner.textContent = '⚠ MODE PREVIEW — jawaban tidak direkam';
         document.body.prepend(banner);
-        // Push topbar down by banner height
         document.querySelector('.sim-topbar').style.top = banner.offsetHeight + 'px';
         document.getElementById('sim-layout').style.top = (44 + banner.offsetHeight) + 'px';
+      }
+
+      if (isTestMode) {
+        // Test mode: hide quiz pane, give full width to sim, remove toggle button
+        const banner = document.createElement('div');
+        banner.style.cssText = 'background:#2563eb;color:#fff;font-weight:700;font-size:12px;text-align:center;padding:4px 8px;position:fixed;top:0;left:0;right:0;z-index:200;letter-spacing:.03em;';
+        banner.textContent = 'MODE TEST — jelajahi simulasi bebas. Soal tidak ditampilkan.';
+        document.body.prepend(banner);
+        document.querySelector('.sim-topbar').style.top = banner.offsetHeight + 'px';
+        document.getElementById('sim-layout').style.top = (44 + banner.offsetHeight) + 'px';
+        document.getElementById('sim-layout').classList.add('quiz-collapsed');
+        document.getElementById('topbar-right').style.display = 'none';
+        return;
       }
 
       await QuizOverlay.init(key, { previewMode: isPreview, previewData: isPreview ? meta : null });

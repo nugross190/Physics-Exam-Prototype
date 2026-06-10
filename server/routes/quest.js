@@ -6,6 +6,12 @@ const { gradeAnswer, STAGES } = require('../grading');
 const router = express.Router();
 router.use(requireStudent);
 
+const getSettingStmt = db.prepare(`SELECT value FROM settings WHERE key = ?`);
+function isTestMode() {
+  const row = getSettingStmt.get('test_mode');
+  return row && row.value === 'true';
+}
+
 const listSims = db.prepare(`SELECT sim_key, title, order_index, embed_path FROM sims ORDER BY order_index`);
 const getSession = db.prepare(`SELECT completed_sims, current_sim, current_stage FROM sessions WHERE id = ?`);
 const getSim = db.prepare(`SELECT sim_key, title, embed_path FROM sims WHERE sim_key = ?`);
@@ -32,6 +38,7 @@ function parseCompleted(row) {
 
 router.get('/dashboard', (req, res) => {
   const { sid, studentId } = req.student;
+  const testMode = isTestMode();
   const sims = listSims.all();
   const sess = getSession.get(sid) || { completed_sims: '[]', current_sim: 'newton', current_stage: 'tutorial' };
   const completed = parseCompleted(sess);
@@ -44,14 +51,15 @@ router.get('/dashboard', (req, res) => {
     title: s.title,
     order_index: s.order_index,
     embed_path: s.embed_path,
-    completed: completed.has(s.sim_key),
-    unlocked: completed.has(s.sim_key) || s.sim_key === activeKey
+    completed: !testMode && completed.has(s.sim_key),
+    unlocked: testMode || completed.has(s.sim_key) || s.sim_key === activeKey
   }));
 
   res.json({
     student: { id: studentId, name: req.student.name, nis: req.student.nis },
     sims: list,
-    active_sim: activeKey,
+    test_mode: testMode,
+    active_sim: testMode ? null : activeKey,
     current_stage: sess.current_stage || 'tutorial'
   });
 });
@@ -59,6 +67,22 @@ router.get('/dashboard', (req, res) => {
 router.get('/sim/:simKey', (req, res) => {
   const { sid } = req.student;
   const simKey = req.params.simKey;
+  const testMode = isTestMode();
+
+  const meta = getSim.get(simKey);
+  if (!meta) return res.status(404).json({ error: 'Simulasi tidak ditemukan' });
+
+  if (testMode) {
+    return res.json({
+      sim: { sim_key: simKey, title: meta.title, embed_path: meta.embed_path },
+      stages: STAGES,
+      questions: [],
+      responses: [],
+      completed: false,
+      current_stage: 'tutorial',
+      test_mode: true
+    });
+  }
 
   const sess = getSession.get(sid);
   const sims = listSims.all();
@@ -68,8 +92,6 @@ router.get('/sim/:simKey', (req, res) => {
   if (!completed.has(simKey) && simKey !== firstIncomplete) {
     return res.status(403).json({ error: 'Selesaikan simulasi sebelumnya terlebih dahulu' });
   }
-  const meta = getSim.get(simKey);
-  if (!meta) return res.status(404).json({ error: 'Simulasi tidak ditemukan' });
 
   const rawQs = listQuestions.all(simKey);
   const stripped = rawQs.map((q) => {

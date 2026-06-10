@@ -155,6 +155,18 @@
   </div>
 
   <div class="container" id="app-view" style="display:none;">
+    <!-- Test Mode control -->
+    <div class="card" id="test-mode-card" style="margin-bottom:16px;display:flex;align-items:center;gap:16px;padding:14px 20px;border-left:4px solid #2563eb;">
+      <div>
+        <strong>Mode Test Siswa</strong>
+        <p class="muted" style="margin:3px 0 0;font-size:13px;">Aktifkan agar siswa dapat menjelajahi semua simulasi tanpa urutan dan tanpa soal.</p>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+        <span id="test-mode-status" style="font-size:13px;font-weight:600;"></span>
+        <button class="btn" id="test-mode-toggle" style="min-width:120px;">Memuat...</button>
+      </div>
+    </div>
+
     <div class="tabs">
       <button data-tab="students" class="active">Siswa</button>
       <button data-tab="questions">Soal</button>
@@ -252,7 +264,34 @@
       });
     });
 
+    async function loadTestModeStatus() {
+      const { test_mode } = await API.get('/api/admin/settings');
+      const statusEl = document.getElementById('test-mode-status');
+      const toggleBtn = document.getElementById('test-mode-toggle');
+      const card = document.getElementById('test-mode-card');
+      if (test_mode) {
+        statusEl.textContent = 'AKTIF';
+        statusEl.style.color = '#2563eb';
+        toggleBtn.textContent = 'Nonaktifkan Mode Test';
+        toggleBtn.className = 'btn btn-bad';
+        card.style.borderLeftColor = '#2563eb';
+        card.style.background = '#eff6ff';
+      } else {
+        statusEl.textContent = 'Nonaktif';
+        statusEl.style.color = '#64748b';
+        toggleBtn.textContent = 'Aktifkan Mode Test';
+        toggleBtn.className = 'btn';
+        card.style.borderLeftColor = '#2563eb';
+        card.style.background = '';
+      }
+      toggleBtn.onclick = async () => {
+        await API.post('/api/admin/settings/test-mode', { enabled: !test_mode });
+        loadTestModeStatus();
+      };
+    }
+
     async function loadAll() {
+      loadTestModeStatus();
       const s = await API.get('/api/admin/sims'); sims = s.sims;
       const sel = document.getElementById('q-sim');
       sel.innerHTML = sims.map(x => `<option value="${x.sim_key}">${x.title}</option>`).join('');

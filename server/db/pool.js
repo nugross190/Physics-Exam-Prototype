@@ -14,4 +14,13 @@ db.pragma('busy_timeout = 5000');
 
 console.log('[db] using sqlite at', dbFile);
 
+// Global key-value settings table (created here so it's always available on startup)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )
+`);
+db.prepare(`INSERT OR IGNORE INTO settings (key, value) VALUES ('test_mode', 'false')`).run();
+
 module.exports = db;

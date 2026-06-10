@@ -179,7 +179,7 @@
     <div id="tab-questions" class="tab-panel" style="display:none;">
       <div class="card">
         <h2>Editor Soal</h2>
-        <p class="muted" style="margin-top:-8px;">Pilih simulasi, lalu kelola soal per tahap. Jenis soal dipilih saat menambah soal baru.</p>
+        <p class="muted" style="margin-top:-8px;">Satu daftar soal per simulasi — campur jenis soal apa pun, urutkan bebas dengan tombol ↑↓.</p>
         <div class="row" style="margin-bottom: 16px;">
           <label><strong>Simulasi:</strong></label>
           <select id="q-sim" style="min-width: 240px;"></select>
@@ -314,14 +314,7 @@
     });
 
     // ─── Question editor (Google Forms style) ─────────────────────────
-    const STAGE_META = [
-      { key: 'tutorial',   label: 'Tutorial',     icon: '📖', desc: 'Langkah perkenalan simulasi' },
-      { key: 'var_test',   label: 'Uji Variabel', icon: '🔬', desc: 'Eksperimen variabel' },
-      { key: 'inquiry',    label: 'Inkuiri',      icon: '❓', desc: 'PG dan PG kompleks' },
-      { key: 'true_false', label: 'Benar/Salah',  icon: '✓',  desc: 'Pernyataan benar/salah' },
-      { key: 'conclusion', label: 'Kesimpulan',   icon: '🎯', desc: 'Isian bank kata' }
-    ];
-
+    // stage is derived from type; it remains in the DB for analytics/back-compat.
     const TYPE_META = {
       tutorial_step: { label: 'Langkah Tutorial', icon: '📖', stage: 'tutorial' },
       var_test:      { label: 'Uji Variabel',     icon: '🔬', stage: 'var_test' },
@@ -602,41 +595,36 @@
       });
     }
 
+    let currentOrder = []; // question ids in display order, for reorder persistence
+
     async function loadQuestions() {
       const simKey = document.getElementById('q-sim').value;
       if (!simKey) return;
       const { questions } = await API.get('/api/admin/questions?sim_key=' + encodeURIComponent(simKey));
-      const byStage = Object.fromEntries(STAGE_META.map(s => [s.key, []]));
-      for (const q of questions) (byStage[q.stage] = byStage[q.stage] || []).push(q);
+      currentOrder = questions.map(q => q.id);
 
       const list = document.getElementById('q-list');
-      list.innerHTML = STAGE_META.map(stage => {
-        const items = byStage[stage.key] || [];
-        const cards = items.map((q, i) => `
-          <div class="q-card" data-id="${q.id}" data-type="${q.type}">
-            <div class="q-card-header">
-              <span class="order-num">${i + 1}</span>
-              <span class="type-label">${TYPE_META[q.type]?.icon || ''} ${TYPE_META[q.type]?.label || q.type}</span>
-              <div class="actions">
-                <button class="btn btn-secondary edit-btn">✎ Edit</button>
-                <button class="btn btn-bad del-btn">Hapus</button>
-              </div>
+      const cards = questions.map((q, i) => `
+        <div class="q-card" data-id="${q.id}" data-type="${q.type}">
+          <div class="q-card-header">
+            <span class="order-num">${i + 1}</span>
+            <span class="type-label">${TYPE_META[q.type]?.icon || ''} ${TYPE_META[q.type]?.label || q.type}</span>
+            <div class="actions">
+              <button class="btn btn-secondary move-up"   title="Pindah ke atas"  ${i === 0 ? 'disabled' : ''}>↑</button>
+              <button class="btn btn-secondary move-down" title="Pindah ke bawah" ${i === questions.length - 1 ? 'disabled' : ''}>↓</button>
+              <button class="btn btn-secondary edit-btn">✎ Edit</button>
+              <button class="btn btn-bad del-btn">Hapus</button>
             </div>
-            <div class="q-card-body preview-body">${renderPreview(q)}</div>
-          </div>`).join('');
-        return `
-          <div class="stage-section">
-            <div class="stage-header">
-              <span class="stage-icon">${stage.icon}</span>
-              <span class="stage-name">${stage.label}</span>
-              <span class="stage-count">${items.length} soal</span>
-              <button class="btn stage-add" data-stage="${stage.key}">+ Tambah</button>
-            </div>
-            ${cards || '<div class="muted" style="padding: 8px 14px; font-size: 13px;">Belum ada soal di tahap ini.</div>'}
-          </div>`;
-      }).join('');
+          </div>
+          <div class="q-card-body preview-body">${renderPreview(q)}</div>
+        </div>`).join('');
 
-      // Wire edit
+      list.innerHTML = `
+        ${cards || '<div class="muted" style="padding: 8px 14px; font-size: 13px;">Belum ada soal untuk simulasi ini.</div>'}
+        <div style="display:flex; justify-content:center; margin-top: 12px;">
+          <button class="btn" id="add-question-btn" style="padding: 10px 24px;">+ Tambah Soal</button>
+        </div>`;
+
       list.querySelectorAll('.q-card').forEach(card => {
         const id = card.dataset.id;
         const q = questions.find(x => String(x.id) === id);
@@ -647,12 +635,20 @@
           await API.del('/api/admin/questions/' + id);
           loadQuestions();
         });
+        card.querySelector('.move-up').addEventListener('click', () => moveQuestion(q.id, -1));
+        card.querySelector('.move-down').addEventListener('click', () => moveQuestion(q.id, +1));
       });
 
-      // Wire "+ Tambah" per stage
-      list.querySelectorAll('.stage-add').forEach(btn => {
-        btn.addEventListener('click', () => openNewQuestionModal(btn.dataset.stage));
-      });
+      document.getElementById('add-question-btn').addEventListener('click', openNewQuestionModal);
+    }
+
+    async function moveQuestion(id, delta) {
+      const i = currentOrder.indexOf(id);
+      const j = i + delta;
+      if (i < 0 || j < 0 || j >= currentOrder.length) return;
+      [currentOrder[i], currentOrder[j]] = [currentOrder[j], currentOrder[i]];
+      await API.post('/api/admin/questions/reorder', { ids: currentOrder });
+      loadQuestions();
     }
 
     function openEdit(card, q) {
@@ -685,22 +681,20 @@
       });
     }
 
-    function openNewQuestionModal(forStage) {
+    function openNewQuestionModal() {
       const simKey = document.getElementById('q-sim').value;
-      const typesForStage = Object.entries(TYPE_META).filter(([k, m]) => m.stage === forStage);
 
       const modal = document.createElement('div');
       modal.className = 'new-q-modal';
       modal.innerHTML = `
         <div class="modal-card">
-          <h3>Tambah Soal — ${STAGE_META.find(s => s.key === forStage).label}</h3>
-          <p class="muted" style="font-size:13px;">Pilih jenis soal:</p>
+          <h3>Tambah Soal</h3>
+          <p class="muted" style="font-size:13px;">Pilih jenis soal — soal akan ditambahkan di akhir, gunakan ↑↓ untuk memindah posisi:</p>
           <div class="type-grid">
-            ${typesForStage.map(([k, m]) => `
+            ${Object.entries(TYPE_META).map(([k, m]) => `
               <button data-type="${k}">
                 <span class="t-icon">${m.icon}</span>
                 <span class="t-label">${m.label}</span>
-                <span class="t-stage">${STAGE_META.find(s => s.key === m.stage).label}</span>
               </button>`).join('')}
           </div>
           <div style="display:flex;justify-content:flex-end;">
@@ -716,19 +710,19 @@
         b.addEventListener('click', async () => {
           const type = b.dataset.type;
           modal.remove();
-          // Create immediately with default payload then open editor
+          // Stage is derived from type — kept for analytics/back-compat only.
+          const stage = TYPE_META[type].stage;
           const r = await API.post('/api/admin/questions', {
             sim_key: simKey,
-            stage: forStage,
+            stage,
             type,
-            order_index: 999,
+            order_index: currentOrder.length, // append at the end
             payload: defaultPayload(type)
           });
           await loadQuestions();
-          // Open the newly created one
           const newCard = document.querySelector(`.q-card[data-id="${r.id}"]`);
           if (newCard) {
-            const q = { id: r.id, sim_key: simKey, stage: forStage, type, order_index: 999, payload: defaultPayload(type) };
+            const q = { id: r.id, sim_key: simKey, stage, type, order_index: currentOrder.length, payload: defaultPayload(type) };
             openEdit(newCard, q);
             newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }

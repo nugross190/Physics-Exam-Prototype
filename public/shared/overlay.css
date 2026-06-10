@@ -112,28 +112,37 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
 }
 #quiz-panel .qp-actions button:hover { background: rgba(255,255,255,.35); }
 
-#quiz-panel .qp-stages {
+#quiz-panel .qp-dots {
   display: flex;
   padding: 8px 12px;
-  gap: 4px;
+  gap: 5px;
   border-bottom: 1px solid #e2e8f0;
   background: #f8fafc;
   overflow-x: auto;
   flex-shrink: 0;
+  scrollbar-width: thin;
 }
-#quiz-panel .qp-stage-chip {
-  padding: 4px 10px;
-  border-radius: 999px;
+#quiz-panel .qp-dot {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  background: #fff;
+  color: #64748b;
   font-size: 11px;
-  font-weight: 600;
-  background: #e2e8f0;
-  color: #475569;
-  white-space: nowrap;
+  font-weight: 700;
   cursor: pointer;
-  transition: background .1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .1s, border-color .1s;
+  font-family: inherit;
+  padding: 0;
 }
-#quiz-panel .qp-stage-chip.active { background: #2563eb; color: #fff; }
-#quiz-panel .qp-stage-chip.done   { background: #dcfce7; color: #166534; }
+#quiz-panel .qp-dot:hover { transform: scale(1.12); }
+#quiz-panel .qp-dot.done { background: #dcfce7; border-color: #16a34a; color: #166534; }
+#quiz-panel .qp-dot.current { border-color: #2563eb; background: #2563eb; color: #fff; box-shadow: 0 0 0 3px #dbeafe; }
 
 #quiz-panel .qp-body {
   padding: 16px;

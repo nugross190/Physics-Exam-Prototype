@@ -16,10 +16,10 @@
     </div>
     <div class="right" id="topbar-right">
       <button id="toggle-quiz" title="Sembunyikan/tampilkan panel quiz">◀ Sembunyikan Quiz</button>
-      <button id="toggle-topbar" class="topbar-hide-btn" title="Sembunyikan topbar untuk layar lebih luas">⤢</button>
+      <button id="toggle-topbar" class="topbar-hide-btn" title="Sembunyikan menu atas agar simulasi lebih luas">⛶ Layar Penuh</button>
     </div>
   </div>
-  <!-- Restore handle: tiny tab visible at top-center when topbar is hidden (mobile only) -->
+  <!-- Restore handle: tiny tab visible at top-center when topbar is hidden -->
   <button id="topbar-restore" title="Tampilkan topbar">▼ Menu</button>
 
   <!-- Split layout -->
@@ -87,6 +87,15 @@
         meta.sim.title + (isPreview ? ' — MODE PREVIEW' : '') + (isTestMode ? ' — MODE TEST' : '');
       document.getElementById('sim-host').src = meta.sim.embed_path;
 
+      // Topbar hide ("Layar Penuh"): slide topbar off-screen, sim fills the
+      // top edge. Wired before the preview/test-mode branches so the button
+      // works in every mode.
+      function setTopbarHidden(hide) {
+        document.body.classList.toggle('topbar-hidden', hide);
+      }
+      document.getElementById('toggle-topbar').addEventListener('click', () => setTopbarHidden(true));
+      document.getElementById('topbar-restore').addEventListener('click', () => setTopbarHidden(false));
+
       if (isPreview) {
         const banner = document.createElement('div');
         banner.id = 'preview-banner';
@@ -106,7 +115,8 @@
         document.querySelector('.sim-topbar').style.top = banner.offsetHeight + 'px';
         document.getElementById('sim-layout').style.top = (44 + banner.offsetHeight) + 'px';
         document.getElementById('sim-layout').classList.add('quiz-collapsed');
-        document.getElementById('topbar-right').style.display = 'none';
+        // No quiz in test mode, but keep the "Layar Penuh" button usable.
+        document.getElementById('toggle-quiz').style.display = 'none';
         return;
       }
 
@@ -119,13 +129,6 @@
         const collapsed = layout.classList.toggle('quiz-collapsed');
         toggleBtn.textContent = collapsed ? '▶ Buka Quiz' : '◀ Sembunyikan Quiz';
       });
-
-      // Topbar hide (mobile): slide topbar off-screen, sim fills top edge.
-      function setTopbarHidden(hide) {
-        document.body.classList.toggle('topbar-hidden', hide);
-      }
-      document.getElementById('toggle-topbar').addEventListener('click', () => setTopbarHidden(true));
-      document.getElementById('topbar-restore').addEventListener('click', () => setTopbarHidden(false));
     })();
   </script>
 </body>

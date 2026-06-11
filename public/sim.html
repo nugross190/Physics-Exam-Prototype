@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Simulasi — Ujian Fisika</title>
-  <link rel="stylesheet" href="/shared/overlay.css?v=5" />
+  <link rel="stylesheet" href="/shared/overlay.css?v=6" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
 </head>
 <body>
@@ -19,8 +19,12 @@
       <button id="toggle-topbar" class="topbar-hide-btn" title="Sembunyikan menu atas agar simulasi lebih luas">⛶ Layar Penuh</button>
     </div>
   </div>
-  <!-- Restore handle: tiny tab visible at top-center when topbar is hidden -->
-  <button id="topbar-restore" title="Tampilkan topbar">▼ Menu</button>
+  <!-- Floating controls while the topbar is hidden (fullscreen): restore the
+       topbar + toggle the quiz pane (split mode only — mobile uses the FAB) -->
+  <div id="fs-controls">
+    <button id="topbar-restore" title="Tampilkan topbar">▼ Menu</button>
+    <button id="fs-quiz-toggle" title="Sembunyikan/tampilkan panel quiz">◀ Sembunyikan Quiz</button>
+  </div>
 
   <!-- Split layout -->
   <div id="sim-layout">
@@ -145,18 +149,23 @@
         document.getElementById('sim-layout').classList.add('quiz-collapsed');
         // No quiz in test mode, but keep the "Layar Penuh" button usable.
         document.getElementById('toggle-quiz').style.display = 'none';
+        document.getElementById('fs-quiz-toggle').style.display = 'none';
         return;
       }
 
       await QuizOverlay.init(key, { previewMode: isPreview, previewData: isPreview ? meta : null });
 
-      // Topbar toggle: collapse/expand the quiz pane
-      const toggleBtn = document.getElementById('toggle-quiz');
-      toggleBtn.addEventListener('click', () => {
-        const layout = document.getElementById('sim-layout');
-        const collapsed = layout.classList.toggle('quiz-collapsed');
-        toggleBtn.textContent = collapsed ? '▶ Buka Quiz' : '◀ Sembunyikan Quiz';
-      });
+      // Quiz pane toggle — one button in the topbar, a twin in the floating
+      // fullscreen controls so the quiz stays reachable while the topbar is
+      // hidden. Both labels are kept in sync.
+      function toggleQuizPane() {
+        const collapsed = document.getElementById('sim-layout').classList.toggle('quiz-collapsed');
+        const label = collapsed ? '▶ Buka Quiz' : '◀ Sembunyikan Quiz';
+        document.getElementById('toggle-quiz').textContent = label;
+        document.getElementById('fs-quiz-toggle').textContent = label;
+      }
+      document.getElementById('toggle-quiz').addEventListener('click', toggleQuizPane);
+      document.getElementById('fs-quiz-toggle').addEventListener('click', toggleQuizPane);
     })();
   </script>
 </body>

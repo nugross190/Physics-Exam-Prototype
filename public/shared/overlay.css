@@ -353,19 +353,25 @@ body.topbar-hidden .sim-topbar { transform: translateY(-110%); }
 /* !important: preview/test-mode banners set an inline top on #sim-layout */
 body.topbar-hidden #sim-layout { top: 0 !important; }
 
-/* Restore tab: hidden by default, a small pill in the top-LEFT corner while
-   the topbar is hidden. Top-left keeps it clear of the right-side quiz
-   controls and the bottom-right quiz FAB. z-index is above the mobile quiz
-   panel/FAB (999998/999999) so nothing can render on top of it. */
-#topbar-restore { display: none; }
-body.topbar-hidden #topbar-restore {
-  display: inline-flex;
+/* Floating controls: hidden by default, pinned to the top-LEFT corner while
+   the topbar is hidden — "▼ Menu" (restore topbar) plus a twin of the quiz
+   toggle so the quiz pane stays reachable in fullscreen. Top-left keeps them
+   clear of the bottom-right quiz FAB; z-index is above the mobile quiz
+   panel/FAB (999998/999999) so nothing can render on top of them. */
+#fs-controls { display: none; }
+body.topbar-hidden #fs-controls {
+  display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   position: fixed;
   top: 8px;
   left: 8px;
   z-index: 2147483647;
+}
+#fs-controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: #0f172a;
   color: #fff;
   border: none;
@@ -378,13 +384,15 @@ body.topbar-hidden #topbar-restore {
   letter-spacing: .03em;
   box-shadow: 0 2px 10px rgba(0,0,0,.4);
 }
+#fs-controls button:hover { background: #1e293b; }
 
 /* ─── Mobile: ≤ 860px → floating overlay ──────────────────────────────── */
 @media (max-width: 860px) {
   #quiz-pane { display: none !important; }
-  /* The quiz FAB replaces the topbar quiz toggle on mobile, but the
-     "Layar Penuh" button must stay visible — hide only the quiz toggle. */
+  /* The quiz FAB replaces the quiz-pane toggles on mobile, but the
+     "Layar Penuh" button must stay visible — hide only the quiz toggles. */
   .sim-topbar #toggle-quiz { display: none; }
+  #fs-controls #fs-quiz-toggle { display: none; }
 
   /* FAB */
   #quiz-fab {

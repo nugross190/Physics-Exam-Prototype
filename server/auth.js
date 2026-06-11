@@ -41,4 +41,16 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-module.exports = { sign, setAuthCookie, clearAuthCookie, readToken, requireStudent, requireAdmin, COOKIE_NAME };
+// Any authenticated user (student or admin). Used for the /sims/* static
+// mounts: students load sims during the exam, admins load them through the
+// "Preview Sim" iframe — a student-only guard there breaks admin preview.
+function requireUser(req, res, next) {
+  const claims = readToken(req);
+  if (!claims || (claims.role !== 'student' && claims.role !== 'admin')) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  req.user = claims;
+  next();
+}
+
+module.exports = { sign, setAuthCookie, clearAuthCookie, readToken, requireStudent, requireAdmin, requireUser, COOKIE_NAME };

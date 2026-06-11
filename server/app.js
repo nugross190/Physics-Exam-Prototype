@@ -6,7 +6,7 @@ const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
 const questRoutes = require('./routes/quest');
 const adminRoutes = require('./routes/admin');
-const { requireStudent } = require('./auth');
+const { requireUser } = require('./auth');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -33,7 +33,7 @@ const SIM_MOUNTS = [
   ['/sims/rotation', 'Rotational Motion']
 ];
 for (const [route, folder] of SIM_MOUNTS) {
-  app.use(route, requireStudent, express.static(path.join(__dirname, '..', folder), {
+  app.use(route, requireUser, express.static(path.join(__dirname, '..', folder), {
     maxAge: '1d',
     etag: true
   }));

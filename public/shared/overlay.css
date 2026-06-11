@@ -338,6 +338,8 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
 /* Shown at every screen size. Tapping it slides the topbar off the top
    edge and the sim layout expands to fill the viewport from y=0. */
 .sim-topbar button.topbar-hide-btn {
+  display: inline-flex !important;
+  align-items: center;
   background: #f59e0b;
   border-color: #f59e0b;
   color: #78350f;

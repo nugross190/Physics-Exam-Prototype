@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Simulasi — Ujian Fisika</title>
-  <link rel="stylesheet" href="/shared/overlay.css?v=4" />
+  <link rel="stylesheet" href="/shared/overlay.css?v=5" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
 </head>
 <body>
@@ -87,14 +87,42 @@
         meta.sim.title + (isPreview ? ' — MODE PREVIEW' : '') + (isTestMode ? ' — MODE TEST' : '');
       document.getElementById('sim-host').src = meta.sim.embed_path;
 
-      // Topbar hide ("Layar Penuh"): slide topbar off-screen, sim fills the
-      // top edge. Wired before the preview/test-mode branches so the button
-      // works in every mode.
+      // "Layar Penuh": two layers of fullscreen, applied together.
+      //  1) Native Fullscreen API → removes the browser URL bar / chrome
+      //     (works on Android; iOS Safari blocks it for non-video elements).
+      //  2) Our own topbar hide → reclaims the 44px app bar regardless of (1),
+      //     so even where native fullscreen is unavailable the sim gets more
+      //     room. Restore via the "▼ Menu" tab, the system back gesture, or Esc.
+      // Wired before the preview/test-mode branches so it works in every mode.
       function setTopbarHidden(hide) {
         document.body.classList.toggle('topbar-hidden', hide);
       }
-      document.getElementById('toggle-topbar').addEventListener('click', () => setTopbarHidden(true));
-      document.getElementById('topbar-restore').addEventListener('click', () => setTopbarHidden(false));
+      function nativeFsElement() {
+        return document.fullscreenElement || document.webkitFullscreenElement || null;
+      }
+      function enterNativeFs() {
+        const el = document.documentElement;
+        const fn = el.requestFullscreen || el.webkitRequestFullscreen;
+        if (!fn) return;
+        try { const p = fn.call(el); if (p && p.catch) p.catch(() => {}); } catch (e) { /* unsupported */ }
+      }
+      function exitNativeFs() {
+        const fn = document.exitFullscreen || document.webkitExitFullscreen;
+        if (!nativeFsElement() || !fn) return;
+        try { const p = fn.call(document); if (p && p.catch) p.catch(() => {}); } catch (e) { /* ignore */ }
+      }
+      document.getElementById('toggle-topbar').addEventListener('click', () => {
+        setTopbarHidden(true);
+        enterNativeFs();
+      });
+      document.getElementById('topbar-restore').addEventListener('click', () => {
+        setTopbarHidden(false);
+        exitNativeFs();
+      });
+      // If the user leaves native fullscreen via Esc / system back, bring our
+      // topbar back too so the two stay in sync.
+      ['fullscreenchange', 'webkitfullscreenchange'].forEach(ev =>
+        document.addEventListener(ev, () => { if (!nativeFsElement()) setTopbarHidden(false); }));
 
       if (isPreview) {
         const banner = document.createElement('div');

@@ -6,7 +6,7 @@ const db = require('./pool');
 // wipes and re-inserts the questions for every sim listed in QUESTIONS
 // (responses tied to the old questions are cascade-deleted). While the
 // version is unchanged, questions are left alone so admin-panel edits survive.
-const QUESTIONS_VERSION = 2;
+const QUESTIONS_VERSION = 3;
 
 const SIMS = [
   { sim_key: 'newton',   title: 'Hukum Newton tentang Gerak', order_index: 1, embed_path: '/sims/newton/index.html' },
@@ -23,6 +23,9 @@ const SIMS = [
 //   highlight      – { selector } pointing at a [data-tut-id=...] element
 //                    inside self-built sims (live spotlight)
 //   image / image_caption – annotated screenshot for PhET sims (optional)
+//   equations      – [{ label, formula, legend }] formula reference card;
+//                    used on the last tutorial step of each sim to present
+//                    the equations some quiz items base their calculation on
 const tut  = (title, body, extra = {}) => ({ type: 'tutorial_step', stage: 'tutorial', payload: { title, body, ...extra } });
 const smc  = (question, options, answer, extra = {}) => ({ type: 'simple_mc',  stage: 'inquiry', payload: { question, options, answer, ...extra } });
 const cmc  = (question, options, answers) => ({ type: 'complex_mc', stage: 'inquiry', payload: { question, options, answers } });
@@ -56,6 +59,14 @@ const QUESTIONS = {
     tut('Ulangi eksperimen',
         'Tombol Reset mengembalikan benda dan seluruh pengaturan ke kondisi awal. Gunakan setiap kali kamu memulai percobaan baru.',
         { highlight: { selector: '[data-tut-id="reset-btn"]' } }),
+    tut('Persamaan dasar perhitungan',
+        'Sebelum masuk ke soal, catat persamaan berikut. Beberapa soal nanti meminta perhitungan yang menggunakan persamaan ini sebagai dasar.',
+        { equations: [
+            { label: 'Hukum II Newton', formula: 'ΣF = m × a',
+              legend: 'ΣF = resultan gaya (N), m = massa (kg), a = percepatan (m/s²)' },
+            { label: 'Kecepatan pada percepatan tetap', formula: 'v = v₀ + a × t',
+              legend: 'v = kecepatan akhir (m/s), v₀ = kecepatan awal (m/s), t = selang waktu (s)' }
+          ] }),
     tmc('Tentukan variabel yang kalian temukan dalam eksperimen',
         'Besaran', ['Variabel Bebas', 'Variabel Terikat'],
         [
@@ -98,6 +109,16 @@ const QUESTIONS = {
         { action_prompt: 'Coba geser slider Friction, lalu amati diagram energinya.' }),
     tut('Mengulang percobaan',
         'Tombol restart skater mengembalikan skater ke posisi awal, sedangkan tombol reset di pojok kanan bawah mengembalikan seluruh pengaturan ke kondisi awal.'),
+    tut('Persamaan dasar perhitungan',
+        'Sebelum masuk ke soal, catat persamaan energi berikut. Beberapa soal nanti meminta perhitungan yang menggunakan persamaan ini sebagai dasar.',
+        { equations: [
+            { label: 'Energi potensial', formula: 'EP = m × g × h',
+              legend: 'm = massa (kg), g = percepatan gravitasi (m/s²), h = ketinggian (m)' },
+            { label: 'Energi kinetik', formula: 'EK = ½ × m × v²',
+              legend: 'v = kelajuan (m/s)' },
+            { label: 'Energi mekanik', formula: 'EM = EK + EP',
+              legend: 'tanpa gesekan EM tetap; dengan gesekan sebagian energi berpindah ke bentuk lain' }
+          ] }),
     cmc('Dalam kondisi tanpa gesekkan (friction di geser ke kiri sepenuhnya). centang semua jawaban yang benar!',
         ['energi potensial tetap', 'energi kinetik tetap', 'kecepatan maksimum tetap', 'energi mekanik tetap', 'energi total tetap'],
         [2, 3, 4]),
@@ -130,6 +151,16 @@ const QUESTIONS = {
         { action_prompt: 'Tampilkan blok kedua lewat ikon 2 balok.' }),
     tut('Tombol reset',
         'Tombol reset oranye di pojok kanan bawah mengembalikan seluruh percobaan ke kondisi awal. Gunakan jika susunan percobaanmu sudah terlalu berantakan.'),
+    tut('Persamaan dasar perhitungan',
+        'Sebelum masuk ke soal, catat persamaan berikut. Beberapa soal nanti meminta perhitungan yang menggunakan persamaan ini sebagai dasar.',
+        { equations: [
+            { label: 'Massa jenis', formula: 'ρ = m / V',
+              legend: 'ρ = massa jenis (kg/m³), m = massa (kg), V = volume (m³)' },
+            { label: 'Gaya berat', formula: 'w = m × g',
+              legend: 'g = percepatan gravitasi (m/s²)' },
+            { label: 'Gaya apung (Archimedes)', formula: 'Fa = ρf × g × Vt',
+              legend: 'ρf = massa jenis fluida (kg/m³), Vt = volume benda yang tercelup (m³)' }
+          ] }),
     tmc('Celupkan balok A ke dalam air dan atur massa jenis (object density)-nya melalui volume dan massa. Ceklis pernyataan yang sesuai.',
         'Kondisi', ['Terapung', 'Tenggelam', 'Melayang'],
         [
@@ -170,6 +201,16 @@ const QUESTIONS = {
         { action_prompt: 'Coba ubah salah satu variabel dan amati perubahan angka tekanan.' }),
     tut('Mengulang percobaan',
         'Tombol reset di pojok kanan bawah mengembalikan simulasi ke kondisi awal.'),
+    tut('Persamaan dasar perhitungan',
+        'Sebelum masuk ke soal, catat persamaan berikut. Beberapa soal nanti meminta perhitungan yang menggunakan persamaan ini sebagai dasar.',
+        { equations: [
+            { label: 'Tekanan hidrostatis', formula: 'Ph = ρ × g × h',
+              legend: 'ρ = massa jenis fluida (kg/m³), g = percepatan gravitasi (m/s²), h = kedalaman dari permukaan (m)' },
+            { label: 'Tekanan total', formula: 'P = P₀ + ρ × g × h',
+              legend: 'P₀ = tekanan atmosfer di permukaan fluida (Pa)' },
+            { label: 'Pipa U (dua fluida setimbang)', formula: 'ρ₁ × h₁ = ρ₂ × h₂',
+              legend: 'tinggi tiap kolom fluida diukur dari bidang batas kedua fluida' }
+          ] }),
     tmc('Seret alat ukur tekanan ke dalam fluida dan lakukan perlakuan-perlakuan berikut. Tentukan apa yang terjadi pada angka tekanan untuk setiap perlakuan.',
         'Perlakuan', ['Tekanan bertambah', 'Tekanan berkurang', 'Tekanan tetap'],
         [
@@ -206,6 +247,16 @@ const QUESTIONS = {
     tut('Baca hasil pengukuran',
         'Panel "Probe Measurements" menampilkan segmen, luas penampang, kecepatan, tekanan, dan ketinggian pada posisi probe. Bandingkan nilainya antar segmen saat menjawab soal.',
         { highlight: { selector: '[data-tut-id="readout"]' }, action_prompt: 'Bandingkan angka kecepatan dan tekanan di segmen lebar vs sempit.' }),
+    tut('Persamaan dasar perhitungan',
+        'Sebelum masuk ke soal, catat persamaan berikut. Beberapa soal nanti meminta perhitungan yang menggunakan persamaan ini sebagai dasar.',
+        { equations: [
+            { label: 'Debit', formula: 'Q = A × v',
+              legend: 'Q = debit (m³/s), A = luas penampang (m²), v = kecepatan aliran (m/s)' },
+            { label: 'Persamaan kontinuitas', formula: 'A₁ × v₁ = A₂ × v₂',
+              legend: 'debit di semua segmen pipa sama besar' },
+            { label: 'Persamaan Bernoulli', formula: 'P + ½ × ρ × v² + ρ × g × h = konstan',
+              legend: 'P = tekanan (Pa), ρ = massa jenis fluida (kg/m³), h = ketinggian titik (m)' }
+          ] }),
     tmc('Gunakan probe untuk mengukur kecepatan aliran di tiap segmen (pengaturan awal: A₁ = 80, A₂ = 20, A₃ = 50 cm²). Tentukan apa yang terjadi pada kecepatan ketika probe dipindahkan.',
         'Perpindahan probe', ['Kecepatan naik', 'Kecepatan turun', 'Kecepatan tetap'],
         [
@@ -244,6 +295,16 @@ const QUESTIONS = {
     tut('Ulangi eksperimen',
         'Tombol Reset mengembalikan simulasi ke awal Fase 1 sehingga kamu bisa mengulang percobaan dengan pengaturan berbeda.',
         { highlight: { selector: '[data-tut-id="reset-btn"]' } }),
+    tut('Persamaan dasar perhitungan',
+        'Sebelum masuk ke soal, catat persamaan berikut. Beberapa soal nanti meminta perhitungan yang menggunakan persamaan ini sebagai dasar.',
+        { equations: [
+            { label: 'Torsi (momen gaya)', formula: 'τ = r × F',
+              legend: 'τ = torsi (N·m), r = lengan gaya (m), F = gaya (N)' },
+            { label: 'Hukum II Newton untuk rotasi', formula: 'τ = I × α',
+              legend: 'I = momen inersia (kg·m²), α = percepatan sudut (rad/s²)' },
+            { label: 'Momentum sudut', formula: 'L = I × ω',
+              legend: 'ω = kecepatan sudut (rad/s); tanpa torsi luar L kekal: I₁ × ω₁ = I₂ × ω₂' }
+          ] }),
     tmc('Jalankan Fase 1 beberapa kali dengan pengaturan berbeda. Amati nilai percepatan sudut (α) pada panel data untuk setiap perlakuan berikut.',
         'Perlakuan', ['α bertambah', 'α berkurang', 'α tetap'],
         [

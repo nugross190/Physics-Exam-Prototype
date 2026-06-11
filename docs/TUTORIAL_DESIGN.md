@@ -1,8 +1,8 @@
 # Tutorial Stage — Design Draft
 
 > **Status (implemented as draft):** the extended `tutorial_step` schema below
-> (`action_prompt`, `highlight.selector`, `image`/`image_caption`) is rendered
-> by `public/shared/overlay.js`. Class-A sims (Newton, Fluid flow, Rotational
+> (`action_prompt`, `highlight.selector`, `image`/`image_caption`, `equations`)
+> is rendered by `public/shared/overlay.js`. Class-A sims (Newton, Fluid flow, Rotational
 > Motion) are tagged with `data-tut-id` and use live spotlight highlights.
 > Class-B PhET sims (Energy Skate Park, Buoyancy, Under Pressure) currently use
 > text + action prompts only — annotated screenshots (Approach B1) can be
@@ -122,12 +122,20 @@ Extend the `tutorial_step` payload (backwards compatible — `body` still works)
     "image_caption": "Lokasi slider Friction di panel kanan-bawah",
 
     // Optional: confirmation gate before "Lanjut" enables
-    "action_prompt": "Coba geser slider lalu klik tombol di bawah."
+    "action_prompt": "Coba geser slider lalu klik tombol di bawah.",
+
+    // Optional: formula reference card. Used on each sim's LAST tutorial
+    // step (right before the quiz) to present the equations that some quiz
+    // items use as the basis of calculation.
+    "equations": [
+      { "label": "Hukum II Newton", "formula": "ΣF = m × a",
+        "legend": "ΣF = resultan gaya (N), m = massa (kg), a = percepatan (m/s²)" }
+    ]
   }
 }
 ```
 
-`highlight` and `image` are both optional; if neither is present the tutorial falls back to the current text-only card.
+`highlight`, `image`, and `equations` are all optional; if none is present the tutorial falls back to the current text-only card.
 
 ## Overlay rendering
 

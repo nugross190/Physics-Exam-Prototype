@@ -269,6 +269,30 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
 }
 #quiz-panel .tut-image-caption { font-size: 12px; color: #64748b; margin-top: 6px; font-style: italic; }
 
+/* Equation reference card (last tutorial step before the quiz) */
+#quiz-panel .tut-eq { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+#quiz-panel .tut-eq-item {
+  padding: 10px 12px;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  background: #eef2ff;
+}
+#quiz-panel .tut-eq-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4338ca;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 2px;
+}
+#quiz-panel .tut-eq-formula {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e1b4b;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+#quiz-panel .tut-eq-legend { font-size: 12px; color: #475569; margin-top: 4px; line-height: 1.5; }
+
 /* "Try it" action prompt + confirmation gate */
 #quiz-panel .tut-action {
   margin-top: 14px;

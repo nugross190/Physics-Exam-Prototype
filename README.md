@@ -74,7 +74,7 @@ Each question is `(sim_key, stage, type, order_index, payload)`. The seed file i
 
 | stage      | type           | payload keys                                                  |
 |------------|----------------|---------------------------------------------------------------|
-| tutorial   | tutorial_step  | `title`, `body`, + optional `action_prompt`, `highlight.selector`, `image`, `image_caption` |
+| tutorial   | tutorial_step  | `title`, `body`, + optional `action_prompt`, `highlight.selector`, `image`, `image_caption`, `equations[]` |
 | var_test   | var_test       | `prompt`, `hint`                                              |
 | inquiry    | simple_mc      | `question`, `options[]`, `answer` (int)                       |
 | inquiry    | complex_mc     | `question`, `options[]`, `answers[]` (int[])                  |
@@ -84,7 +84,7 @@ Each question is `(sim_key, stage, type, order_index, payload)`. The seed file i
 
 Any graded type may carry `trap: true` (hard "skip-detector" question); the flag is stripped from student payloads.
 
-Tutorial extras (see `docs/TUTORIAL_DESIGN.md`): `action_prompt` shows a "try it" task and gates the Lanjut button behind a "Saya sudah mencoba" confirmation; `highlight.selector` draws a live spotlight over a `[data-tut-id=...]` element inside self-built sims (Newton, Fluid flow, Rotational Motion); `image` + `image_caption` show an annotated screenshot for PhET sims (assets not yet captured — prompts are text-only for now).
+Tutorial extras (see `docs/TUTORIAL_DESIGN.md`): `action_prompt` shows a "try it" task and gates the Lanjut button behind a "Saya sudah mencoba" confirmation; `highlight.selector` draws a live spotlight over a `[data-tut-id=...]` element inside self-built sims (Newton, Fluid flow, Rotational Motion); `image` + `image_caption` show an annotated screenshot for PhET sims (assets not yet captured — prompts are text-only for now); `equations` (`[{label, formula, legend}]`) renders a formula reference card — each sim's **last tutorial step, right before the quiz**, lists the equations that some quiz items use as the basis of calculation.
 
 ## API surface
 

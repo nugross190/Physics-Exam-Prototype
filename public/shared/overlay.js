@@ -5,7 +5,8 @@
 // questions can be skipped (and revisited later). Tutorial steps support
 // the extended payload from docs/TUTORIAL_DESIGN.md: `action_prompt`
 // (try-it gate), `highlight.selector` (live spotlight inside self-built
-// sims), and `image`/`image_caption` (annotated screenshot for PhET sims).
+// sims), `image`/`image_caption` (annotated screenshot for PhET sims),
+// and `equations` (formula reference card shown right before the quiz).
 
 (function () {
   const TYPE_LABEL = {
@@ -207,6 +208,14 @@
 
     if (q.type === 'tutorial_step') {
       html += `<div class="q-text"><strong>${escapeHtml(p.title || '')}</strong></div><div>${escapeHtml(p.body || '')}</div>`;
+      if (Array.isArray(p.equations) && p.equations.length) {
+        html += `<div class="tut-eq">${p.equations.map(eq => `
+          <div class="tut-eq-item">
+            ${eq.label ? `<div class="tut-eq-label">${escapeHtml(eq.label)}</div>` : ''}
+            <div class="tut-eq-formula">${escapeHtml(eq.formula || '')}</div>
+            ${eq.legend ? `<div class="tut-eq-legend">${escapeHtml(eq.legend)}</div>` : ''}
+          </div>`).join('')}</div>`;
+      }
       if (p.image) {
         html += `<img class="tut-image" src="${escapeHtml(p.image)}" alt="${escapeHtml(p.image_caption || p.title || '')}" />`;
         if (p.image_caption) html += `<div class="tut-image-caption">${escapeHtml(p.image_caption)}</div>`;

@@ -334,6 +334,47 @@ html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
 /* End-of-list summary: unanswered question shortcuts */
 #quiz-panel .qp-unanswered { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 
+/* ─── Mobile topbar hide ───────────────────────────────────────────────── */
+/* The ⤢ button is only shown on mobile; desktop never needs it. */
+.topbar-hide-btn { display: none !important; }
+
+/* Restore tab: hidden by default, shown only when topbar is hidden on mobile */
+#topbar-restore { display: none; }
+
+@media (max-width: 860px) {
+  .topbar-hide-btn { display: inline-block !important; padding: 5px 10px !important; }
+
+  /* Hidden state: topbar slides up out of view, sim-layout fills from top. */
+  body.topbar-hidden .sim-topbar {
+    transform: translateY(-100%);
+    transition: transform .22s ease;
+  }
+  .sim-topbar { transition: transform .22s ease; }
+  body.topbar-hidden #sim-layout { top: 0; }
+  #sim-layout { transition: top .22s ease; }
+
+  /* Restore tab: a small pill anchored to the top-center of the screen */
+  body.topbar-hidden #topbar-restore {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 101;
+    background: #0f172a;
+    color: #fff;
+    border: none;
+    border-radius: 0 0 10px 10px;
+    padding: 3px 18px 6px;
+    font-size: 11px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: .03em;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  }
+}
+
 /* ─── Mobile: ≤ 860px → floating overlay ──────────────────────────────── */
 @media (max-width: 860px) {
   #quiz-pane { display: none !important; }
